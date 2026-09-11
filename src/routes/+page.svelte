@@ -13,6 +13,8 @@
 </svelte:head>
 
 <main class="panels-container" id="top">
+    <h1 class="sr-only">lyt</h1>
+
     <Panel id="welcome" title="home.txt">
         <h3>welcome!</h3>
         <p>
@@ -94,7 +96,7 @@
     </Panel>
 
     <Panel id="skills" title="skills.txt">
-        <h3>this site was built using modern <span class="html5">HTML5</span>, <span class="css3">CSS3</span>, and <span class="es6">ES6 JS</span>.</h3>
+        <h3>this site was built using <span class="html5">Svelte 5</span>.</h3>
         <p>
             each window is a semantic <code>&lt;article&gt;</code> with its own <code>&lt;header&gt;</code> and <code>&lt;section&gt;</code>. animations and hover effects are handled by <span class="css3">CSS</span> transitions and pseudo-classes.
 

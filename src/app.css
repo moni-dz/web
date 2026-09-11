@@ -143,6 +143,18 @@ strong {
     display: none !important;
 }
 
+.sr-only {
+    position: absolute;
+    width: 0.0625rem;
+    height: 0.0625rem;
+    padding: 0;
+    margin: -0.0625rem;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* semantic HTML layout */
 section {
     display: flex;
@@ -157,20 +169,17 @@ section {
 }
 
 section ul {
-    margin: 0 -1rem;
+    margin: 0;
+    padding-left: 1.25rem;
 }
 
 section ul li {
-    display: flex;
-    list-style: none;
     margin-top: -0.4rem;
     margin-bottom: -0.4rem;
 }
 
-section ul li::before {
-    content: "*";
-    flex-shrink: 0;
-    margin-right: 0.5ch;
+section ul li::marker {
+    content: "* ";
 }
 
 section ul * {
@@ -497,7 +506,7 @@ nav ul li a.active-link:hover {
 #welcome {
     top: calc(40vh - 5.688rem);
     left: 25vw;
-    max-width: 50rem;
+    max-width: 37.5rem;
     width: 100%;
     z-index: 5;
 }

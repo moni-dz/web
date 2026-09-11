@@ -1,7 +1,7 @@
 ---
-title: leaving github pages for cloudflare workers
+title: github pages to cloudflare workers
 date: 2026-09-11
-summary: learning Svelte gave this old blog a reason to finally leave GitHub Pages.
+summary: and a svelte rewrite.
 tags: [cloudflare, sveltekit]
 accent: orange
 ---

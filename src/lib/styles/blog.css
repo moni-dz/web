@@ -385,6 +385,7 @@ body:has(.blog-page-main) {
 .markdown-body {
     grid-area: content;
     min-width: 0;
+    max-width: 70ch;
 }
 
 .markdown-body > :first-child {
