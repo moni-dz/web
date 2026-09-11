@@ -1,16 +1,16 @@
-import { deepEqual, equal, strictEqual, throws } from 'node:assert/strict';
-import test from 'node:test';
+import { test, expect } from '@playwright/test';
 
 import { boundPanelPosition, initWindowManager } from '../src/lib/window-manager.ts';
 import { getPreferredTheme } from '../src/lib/theme.ts';
 import { formatPostDate, getTagColorIndex } from '../src/lib/markdown.ts';
 
 test('post dates accept YAML timestamps and tag colors stay stable', () => {
-    equal(formatPostDate('2026-07-12'), 'July 12, 2026');
-    equal(formatPostDate('2026-07-12T00:00:00.000Z'), 'July 12, 2026');
+    expect(formatPostDate('2026-07-12')).toBe('July 12, 2026');
+    expect(formatPostDate('2026-07-12T00:00:00.000Z')).toBe('July 12, 2026');
     for (const tag of ['javascript', 'markdown', 'web']) {
-        equal(getTagColorIndex(tag), getTagColorIndex(tag.toUpperCase()));
-        equal(getTagColorIndex(tag) >= 0 && getTagColorIndex(tag) < 5, true);
+        expect(getTagColorIndex(tag)).toBe(getTagColorIndex(tag.toUpperCase()));
+        expect(getTagColorIndex(tag)).toBeGreaterThanOrEqual(0);
+        expect(getTagColorIndex(tag)).toBeLessThan(5);
     }
 });
 
@@ -22,8 +22,8 @@ test('post dates accept YAML timestamps and tag colors stay stable', () => {
  */
 
 test('browser entry points import under Node without touching the DOM', () => {
-    equal(typeof initWindowManager, 'function');
-    equal(typeof getPreferredTheme, 'function');
+    expect(typeof initWindowManager).toBe('function');
+    expect(typeof getPreferredTheme).toBe('function');
 });
 
 test('boundPanelPosition clamps both axes and preserves its stable target', () => {
@@ -48,8 +48,8 @@ test('boundPanelPosition clamps both axes and preserves its stable target', () =
 
         // Identity matters because allocating a new point for every pointer frame creates avoidable
         // garbage-collector pressure in the drag hot path.
-        strictEqual(result, target);
-        deepEqual(target, test_case.expected);
+        expect(result).toBe(target);
+        expect(target).toEqual(test_case.expected);
     }
 });
 
@@ -57,8 +57,8 @@ test('boundPanelPosition rejects non-finite positions and inverted bounds', () =
     const target = { x: 0, y: 0 };
     const bounds = { maxX: 100, maxY: 100, minX: 0, minY: 0 };
 
-    throws(() => { boundPanelPosition(target, Number.NaN, 0, bounds); }, TypeError);
-    throws(() => { boundPanelPosition(target, 0, Number.POSITIVE_INFINITY, bounds); }, TypeError);
-    throws(() => { boundPanelPosition(target, 0, 0, { ...bounds, minX: 101 }); }, RangeError);
-    throws(() => { boundPanelPosition(target, 0, 0, { ...bounds, minY: 101 }); }, RangeError);
+    expect(() => boundPanelPosition(target, Number.NaN, 0, bounds)).toThrow(TypeError);
+    expect(() => boundPanelPosition(target, 0, Number.POSITIVE_INFINITY, bounds)).toThrow(TypeError);
+    expect(() => boundPanelPosition(target, 0, 0, { ...bounds, minX: 101 })).toThrow(RangeError);
+    expect(() => boundPanelPosition(target, 0, 0, { ...bounds, minY: 101 })).toThrow(RangeError);
 });

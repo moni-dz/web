@@ -14,6 +14,5 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
-      - run: node --test
-        env:
-          REQUIRE_BROWSER_TESTS: '1'
+      - run: npx playwright install --with-deps
+      - run: npx playwright test
