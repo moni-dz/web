@@ -13,11 +13,15 @@
     let { children } = $props();
     const isPost = $derived(page.url.pathname !== '/blog');
 
-    // Safari restores this element's scrollTop across reloads and history navigation (unlike
+    // Safari restores scroll position across reloads and history navigation (unlike
     // Chrome/Firefox, which reset non-document scroll containers to 0). Force it back to the top
-    // so the post always opens title-first regardless of engine.
+    // so the post always opens title-first regardless of engine. On desktop the article scrolls
+    // internally; on mobile the page itself scrolls, so both are reset.
     let content: HTMLElement;
-    afterNavigate(() => content?.scrollTo(0, 0));
+    afterNavigate(() => {
+        content?.scrollTo(0, 0);
+        window.scrollTo(0, 0);
+    });
 </script>
 
 <main class="blog-page-main">

@@ -288,16 +288,6 @@ export function initWindowManager() {
         }
     }
 
-    /** Collapses every panel, leaving none active. Mobile-only accordion state. */
-    function collapseAllPanels() {
-        for (const candidate of getPanels()) {
-            candidate.classList.remove('active');
-
-            const toggle = candidate.querySelector<HTMLButtonElement>(selectors.panelToggle);
-            toggle?.setAttribute('aria-expanded', 'false');
-        }
-    }
-
     function focusPanel(panel: HTMLElement | null) {
         if (!panel) return;
 
@@ -949,7 +939,7 @@ export function initWindowManager() {
             2: 'touch the image...',
         },
         welcome: {
-            1: `on mobile you may tap a window's title to open it, tap it again to close it.
+            1: `on mobile, scroll down to browse each window.
             toggle the theme by tapping the button at the end of the navigation links.`,
         },
     };
@@ -969,24 +959,6 @@ export function initWindowManager() {
     function setDeviceMessages() {
         for (const message of queryAll(selectors.deviceMessage)) {
             message.textContent = getDeviceMessage(message.id);
-        }
-    }
-
-    /** Wires the mobile accordion: tapping a panel's title opens it and collapses the rest. */
-    function bindPanelToggles() {
-        for (const panel of getInteractivePanels()) {
-            const toggle = queryRequired<HTMLButtonElement>(selectors.panelToggle, panel);
-
-            on(toggle, 'click', () => {
-                if (!state.isMobile) return;
-
-                if (panel.classList.contains('active')) {
-                    collapseAllPanels();
-                    return;
-                }
-
-                focusPanel(panel);
-            });
         }
     }
 
@@ -1157,7 +1129,6 @@ export function initWindowManager() {
         bindTabs();
         setDeviceMessages();
         bindSwipes();
-        bindPanelToggles();
         bindMobileTooltips();
         bindDesktopPanelFocus();
         bindDragging();

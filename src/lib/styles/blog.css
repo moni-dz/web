@@ -2,20 +2,6 @@ body:has(.blog-page-main) {
     position: relative;
     height: 100dvh;
     overflow: hidden;
-    isolation: isolate;
-}
-
-/* Match the homepage's softened backdrop while leaving the foreground window crisp. */
-body:has(.blog-page-main)::before {
-    content: '';
-    position: fixed;
-    inset: var(--nav-height) 0 0;
-    background-color: var(--bg-color);
-    opacity: calc(1 - var(--bg-opacity));
-    backdrop-filter: blur(0.3125rem);
-    -webkit-backdrop-filter: blur(0.3125rem);
-    pointer-events: none;
-    z-index: 0;
 }
 
 .blog-page-main {
@@ -24,10 +10,24 @@ body:has(.blog-page-main)::before {
     height: calc(100dvh - var(--nav-height));
     margin-top: var(--nav-height);
     padding: clamp(1rem, 2vw, 1.5rem);
-    z-index: 1;
+}
+
+/* Match the homepage's softened backdrop while leaving the foreground window crisp. */
+.blog-page-main::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: var(--bg-color);
+    opacity: calc(1 - var(--bg-opacity));
+    backdrop-filter: blur(0.3125rem);
+    -webkit-backdrop-filter: blur(0.3125rem);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .blog-page-window {
+    position: relative;
+    z-index: 1;
     display: flex;
     width: 100%;
     height: 100%;
@@ -226,6 +226,9 @@ body:has(.blog-page-main)::before {
     column-gap: clamp(1.5rem, 4vw, 3rem);
     row-gap: 0.5rem;
     align-items: start;
+    /* Safari renders noticeably less breathing room above the title here than
+       Chromium/Firefox at the same padding, so this compensates with extra margin. */
+    margin-top: 0.75rem;
     margin-bottom: 2rem;
 }
 
@@ -524,19 +527,46 @@ body:has(.blog-page-main)::before {
         margin: 0;
     }
 
+    body:has(.blog-page-main) {
+        height: auto;
+        overflow-y: auto;
+    }
+
     .blog-page-main {
         width: 100%;
-        height: calc(100dvh - var(--nav-height));
+        height: auto;
+        min-height: calc(100vh - var(--nav-height));
+        min-height: calc(100dvh - var(--nav-height));
         margin-top: var(--nav-height);
-        padding: 0.75rem 1.25rem 1.25rem 0.75rem;
+        padding: 0.75rem 1.25rem 1.25rem 1.25rem;
+        z-index: 0;
+    }
+
+    .blog-page-window {
+        height: auto;
+        border: none;
+        box-shadow: none;
+        background: none;
+        overflow: visible;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .blog-page-header {
+        background: none;
+        color: var(--text-color);
+        padding: 0 0 0.75rem 0;
+        border-bottom: 0.125rem solid var(--border-color);
+    }
+
+    .blog-page-header-button {
+        color: var(--text-color);
     }
 
     .blog-page-content {
         min-height: 0;
-        padding: 1.25rem;
-    }
-
-    .blog-page-window {
-        box-shadow: 0.375rem 0.375rem 0 var(--shadow-color);
+        padding: 0;
+        overflow-y: visible;
+        overscroll-behavior: auto;
     }
 }
