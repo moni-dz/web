@@ -2,6 +2,8 @@
     import { onMount } from 'svelte';
     import { initWindowManager } from '$lib/window-manager';
     import Panel from '$lib/components/Panel.svelte';
+    import DeviceMessage from '$lib/components/DeviceMessage.svelte';
+    import Reference from '$lib/components/Reference.svelte';
     onMount(initWindowManager);
 </script>
 
@@ -20,9 +22,9 @@
         <p>
             start by navigating to the other windows using the links above.
 
-            <span class="device-specific-message" id="welcome-message-1"></span>
+            <DeviceMessage panel="welcome" n={1} />
 
-            this site is best viewed in a modern up-to-date browser as it uses <code><a href="https://web.dev/baseline">baseline</a> <a href="https://web.dev/baseline/2023">2023</a> and <a href="https://web.dev/baseline/2024">2024</a> features such as <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/oklch">oklch()</a><sup id="ref-1"><a href="#back-ref-1" aria-label="Open reference 1">1</a></sup></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark">light-dark()</a></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame">requestAnimationFrame()</a></code>, and the <a href="https://web.dev/blog/popover-api">Popover API</a>.
+            this site is best viewed in a modern up-to-date browser as it uses <code><a href="https://web.dev/baseline">baseline</a> <a href="https://web.dev/baseline/2023">2023</a> and <a href="https://web.dev/baseline/2024">2024</a> features such as <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/oklch">oklch()</a><Reference n={1} kind="ref" /></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark">light-dark()</a></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame">requestAnimationFrame()</a></code>, and the <a href="https://web.dev/blog/popover-api">Popover API</a>.
         </p>
     </Panel>
 
@@ -36,20 +38,20 @@
         {/snippet}
 
         <div class="terminal-tab tab-active" id="about-site" role="tabpanel" aria-labelledby="about-site-tab">
-            <h3>I created this site to look and feel like an old text-based windowing system<sup id="ref-2"><a href="#back-ref-2" aria-label="Open reference 2">2</a></sup>.</h3>
+            <h3>I created this site to look and feel like an old text-based windowing system<Reference n={2} kind="ref" />.</h3>
             <p>
                 the experience is akin to <abbr title="Single-page applications">SPA</abbr>s commonly seen in modern web development with frameworks like React.
 
                 while web programming is <strong>not my main focus</strong>, this site aims to showcase my progress in the course.
 
-                <span class="device-specific-message" id="about-message-1"></span>
+                <DeviceMessage panel="about" n={1} />
             </p>
         </div>
         <div class="terminal-tab" id="about-author" role="tabpanel" aria-labelledby="about-author-tab" hidden>
             <div id="about-container">
                 <aside id="about-icon-container">
                     <img id="about-icon" src="/assets/icon.webp" alt="Portrait of Lythe Marvin Lacre" width="320" height="320">
-                    <strong><span class="device-specific-message" id="about-message-2"></span></strong>
+                    <strong><DeviceMessage panel="about" n={2} /></strong>
                     <abbr title="you should hover every element like me.">also hover me...</abbr>
                 </aside>
                 <section id="about-text">
@@ -111,7 +113,7 @@
     </Panel>
 
     <Panel id="refs" title="refs.txt">
-        <p><sup id="back-ref-1"><a href="#ref-1" aria-label="Return to reference 1">1</a></sup><a href="https://evilmartians.com/chronicles/oklch-in-css-why-quit-rgb-hsl">OKLCH in CSS: why we moved from RGB and HSL</a></p>
-        <p><sup id="back-ref-2"><a href="#ref-2" aria-label="Return to reference 2">2</a></sup><a href="https://urbanjost.github.io/M_ncurses/images/example.gif" data-preview="true">ncurses (click to preview)</a></p>
+        <p><Reference n={1} kind="back" /><a href="https://evilmartians.com/chronicles/oklch-in-css-why-quit-rgb-hsl">OKLCH in CSS: why we moved from RGB and HSL</a></p>
+        <p><Reference n={2} kind="back" /><a href="https://urbanjost.github.io/M_ncurses/images/example.gif" data-preview="true">ncurses (click to preview)</a></p>
     </Panel>
 </main>
