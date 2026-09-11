@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { initWindowManager } from '$lib/window-manager';
+    import Panel from '$lib/components/Panel.svelte';
     onMount(initWindowManager);
 </script>
 
@@ -11,139 +12,104 @@
     <meta name="description" content="Lythe Marvin Lacre's terminal-inspired software development portfolio." />
 </svelte:head>
 
-    <main class="panels-container" id="top">
-    <article class="panel" id="welcome" aria-labelledby="welcome-title">
-    <div class="terminal-window">
-        <header class="terminal-header">
-            <h2 id="welcome-title">home.txt</h2>
-        </header>
-        <section class="terminal-content">
-            <h3>welcome!</h3>
-            <p>
-                start by navigating to the other windows using the links above.
+<main class="panels-container" id="top">
+    <Panel id="welcome" title="home.txt">
+        <h3>welcome!</h3>
+        <p>
+            start by navigating to the other windows using the links above.
 
-                <span class="device-specific-message" id="welcome-message-1"></span>
+            <span class="device-specific-message" id="welcome-message-1"></span>
 
-                this site is best viewed in a modern up-to-date browser as it uses <a href="https://web.dev/baseline">baseline</a> <a href="https://web.dev/baseline/2023">2023</a> and <a href="https://web.dev/baseline/2024">2024</a> features such as <code><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/oklch">oklch()</a><sup id="ref-1"><a href="#back-ref-1" aria-label="Open reference 1">1</a></sup></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark">light-dark()</a></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame">requestAnimationFrame()</a></code>, and the <a href="https://web.dev/blog/popover-api">Popover API</a>.
-            </p>
-        </section>
-    </div>
-    </article>
+            this site is best viewed in a modern up-to-date browser as it uses <code><a href="https://web.dev/baseline">baseline</a> <a href="https://web.dev/baseline/2023">2023</a> and <a href="https://web.dev/baseline/2024">2024</a> features such as <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/oklch">oklch()</a><sup id="ref-1"><a href="#back-ref-1" aria-label="Open reference 1">1</a></sup></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark">light-dark()</a></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame">requestAnimationFrame()</a></code>, and the <a href="https://web.dev/blog/popover-api">Popover API</a>.
+        </p>
+    </Panel>
 
-    <article class="panel" id="about" aria-labelledby="about-title">
-    <div class="terminal-window">
-        <header class="terminal-header">
-            <h2 id="about-title">about.txt</h2>
+    <Panel id="about" title="about.txt">
+        {#snippet tabs()}
             <div class="terminal-tabs" role="tablist" aria-label="About sections">
                 <button class="tab-button tab-active" id="about-site-tab" type="button" role="tab" data-tab="site" aria-controls="about-site" aria-selected="true">site</button>
                 <button class="tab-button" id="about-author-tab" type="button" role="tab" data-tab="author" aria-controls="about-author" aria-selected="false" tabindex="-1">author</button>
                 <button class="tab-button" id="about-certifications-tab" type="button" role="tab" data-tab="certifications" aria-controls="about-certifications" aria-selected="false" tabindex="-1">certifications</button>
             </div>
-        </header>
-        <section class="terminal-content">
-            <div class="terminal-tab tab-active" id="about-site" role="tabpanel" aria-labelledby="about-site-tab">
-                <h3>I created this site to look and feel like an old text-based windowing system<sup id="ref-2"><a href="#back-ref-2" aria-label="Open reference 2">2</a></sup>.</h3>
-                <p>
+        {/snippet}
 
-
-                    the experience is akin to <abbr title="Single-page applications">SPA</abbr>s commonly seen in modern web development with frameworks like React.
-
-                    while web programming is <strong>not my main focus</strong>, this site aims to showcase my progress in the course.
-
-                    <span class="device-specific-message" id="about-message-1"></span>
-                </p>
-            </div>
-            <div class="terminal-tab" id="about-author" role="tabpanel" aria-labelledby="about-author-tab" hidden>
-                <div id="about-container">
-                    <aside id="about-icon-container">
-                        <img id="about-icon" src="/assets/icon.webp" alt="Portrait of Lythe Marvin Lacre" width="320" height="320">
-                        <strong><span class="device-specific-message" id="about-message-2"></span></strong>
-                        <abbr title="you should hover every element like me.">also hover me...</abbr>
-                    </aside>
-                    <section id="about-text">
-                        <h3>hi my name is: <abbr title="Lythe Marvin L. Lacre">lyt</abbr></h3>
-                        <p>
-                            I am a Computer Science student at<br />Mapúa Malayan Colleges Mindanao.
-
-                            some important links: <a href="https://github.com/moni-dz">GitHub</a>, <a href="https://www.linkedin.com/in/dxdydz/">LinkedIn</a>
-                        </p>
-                        <details>
-                            <summary>&nbsp;some details about me</summary><ul>
-                                <li>prefers to stay out of <abbr title="there are far better people than me!">frontend</abbr></li>
-                                <li><strong>really</strong> likes <abbr title="I enjoy performance optimizations">backend</abbr> work</li>
-                                <li><abbr title="concepts are easily transferable, unless they enforce certain design patterns...">knows</abbr> <abbr title="I know the &quot;ancient&quot; ones like C, Java, etc...">some</abbr> <abbr title="Rust and Zig are my &quot;modern&quot; favorites">programming</abbr> <abbr title="statically typed and strong type systems preferred! (Python and TypeScript are tolerated)">languages</abbr></li>
-                                <li>applied &gt; theoretical (in everything!)</li>
-                            </ul>
-                        </details>
-                    </section>
-                </div>
-            </div>
-            <div class="terminal-tab" id="about-certifications" role="tabpanel" aria-labelledby="about-certifications-tab" hidden>
-                <h3>certifications</h3>
-                <p>
-                    I am an <a href="https://www.credly.com/badges/f2cdeeeb-2ce9-43a3-91c4-458687a65565/linked_in_profile"><b class="badge-aws">AWS</b> Certified AI Practitioner</a>.
-                </p>
-            </div>
-        </section>
-    </div>
-    </article>
-
-    <article class="panel" id="projects" aria-labelledby="projects-title">
-    <div class="terminal-window">
-        <header class="terminal-header">
-            <h2 id="projects-title">projects.txt</h2>
-        </header>
-        <section class="terminal-content">
-            <ul class="projects-list">
-                <li><a href="https://github.com/moni-dz/it101-2-summative"><b>collectify</b> - <i>expense tracker (Java Swing app)</i></a></li>
-                <li><a href="https://github.com/moni-dz/oop-m2"><b>cloverpass</b> - <i>movie ticketing system (Windows Forms app)</i></a></li>
-                <li><a href="https://github.com/moni-dz/keiko"><b>keiko</b> - <i>flashcards app (web app using Next.js)</i></a></li>
-                <li><a href="https://github.com/moni-dz/im-wp"><b>untitled</b> - <i>management system for LML Engineering Solutions</i></a></li>
-                <li><a href="https://github.com/arcadetokyo/FARELY-ROWLET"><b>farely</b> - <i>fare expense tracker</i></a></li>
-            </ul>
+        <div class="terminal-tab tab-active" id="about-site" role="tabpanel" aria-labelledby="about-site-tab">
+            <h3>I created this site to look and feel like an old text-based windowing system<sup id="ref-2"><a href="#back-ref-2" aria-label="Open reference 2">2</a></sup>.</h3>
             <p>
-                existing projects that use web technologies (keiko) showcase my progress in web programming.
+                the experience is akin to <abbr title="Single-page applications">SPA</abbr>s commonly seen in modern web development with frameworks like React.
 
-                while the other projects are in Java and C#, they are still a testament to my programming skills.
+                while web programming is <strong>not my main focus</strong>, this site aims to showcase my progress in the course.
 
-                unlike keiko, this site uses vanilla HTML5, CSS3, and JS (ECMAScript 2015 and above) as opposed to Next.js and Tailwind CSS.
+                <span class="device-specific-message" id="about-message-1"></span>
             </p>
-        </section>
-    </div>
-    </article>
+        </div>
+        <div class="terminal-tab" id="about-author" role="tabpanel" aria-labelledby="about-author-tab" hidden>
+            <div id="about-container">
+                <aside id="about-icon-container">
+                    <img id="about-icon" src="/assets/icon.webp" alt="Portrait of Lythe Marvin Lacre" width="320" height="320">
+                    <strong><span class="device-specific-message" id="about-message-2"></span></strong>
+                    <abbr title="you should hover every element like me.">also hover me...</abbr>
+                </aside>
+                <section id="about-text">
+                    <h3>hi my name is: <abbr title="Lythe Marvin L. Lacre">lyt</abbr></h3>
+                    <p>
+                        I am a Computer Science student at<br />Mapúa Malayan Colleges Mindanao.
 
-    <article class="panel" id="skills" aria-labelledby="skills-title">
-    <div class="terminal-window">
-        <header class="terminal-header">
-            <h2 id="skills-title">skills.txt</h2>
-        </header>
-        <section class="terminal-content">
-            <h3>this site was built using modern <span class="html5">HTML5</span>, <span class="css3">CSS3</span>, and <span class="es6">ES6 JS</span>.</h3>
+                        some important links: <a href="https://github.com/moni-dz">GitHub</a>, <a href="https://www.linkedin.com/in/dxdydz/">LinkedIn</a>
+                    </p>
+                    <details>
+                        <summary>&nbsp;some details about me</summary><ul>
+                            <li>prefers to stay out of <abbr title="there are far better people than me!">frontend</abbr></li>
+                            <li><strong>really</strong> likes <abbr title="I enjoy performance optimizations">backend</abbr> work</li>
+                            <li><abbr title="concepts are easily transferable, unless they enforce certain design patterns...">knows</abbr> <abbr title="I know the &quot;ancient&quot; ones like C, Java, etc...">some</abbr> <abbr title="Rust and Zig are my &quot;modern&quot; favorites">programming</abbr> <abbr title="statically typed and strong type systems preferred! (Python and TypeScript are tolerated)">languages</abbr></li>
+                            <li>applied &gt; theoretical (in everything!)</li>
+                        </ul>
+                    </details>
+                </section>
+            </div>
+        </div>
+        <div class="terminal-tab" id="about-certifications" role="tabpanel" aria-labelledby="about-certifications-tab" hidden>
+            <h3>certifications</h3>
             <p>
-                each window is a semantic <code>&lt;article&gt;</code> with its own <code>&lt;header&gt;</code> and <code>&lt;section&gt;</code>. animations and hover effects are handled by <span class="css3">CSS</span> transitions and pseudo-classes.
-
-                content in windows like this uses <abbr title="CSS flexbox"><code>display: flex</code></abbr> for arrangement.
-
-                window dragging, window tabs, <a href="https://upload.wikimedia.org/wikipedia/commons/a/aa/Philips_PM5544.svg" data-preview="true">image previewing<sub>(try me!)</sub></a>, and theme toggling are implemented in <span class="es6">JS</span> using event listeners and DOM selectors.
-
-                this site is <a href="/assets/lighthouse.webp" data-preview="true">responsive</a> and works well on mobile devices, the experience is <abbr title="you can't really have &quot;windows&quot;">slightly different</abbr> but still functional.
-
-                implementing this site is a marker of my progress in this course and a demonstration of my skills.
+                I am an <a href="https://www.credly.com/badges/f2cdeeeb-2ce9-43a3-91c4-458687a65565/linked_in_profile"><b class="badge-aws">AWS</b> Certified AI Practitioner</a>.
             </p>
-        </section>
-    </div>
-    </article>
+        </div>
+    </Panel>
 
-    <article class="panel" id="refs" aria-labelledby="refs-title">
-    <div class="terminal-window">
-        <header class="terminal-header">
-            <h2 id="refs-title">refs.txt</h2>
-        </header>
-        <section class="terminal-content">
-            <p><sup id="back-ref-1"><a href="#ref-1" aria-label="Return to reference 1">1</a></sup><a href="https://evilmartians.com/chronicles/oklch-in-css-why-quit-rgb-hsl">OKLCH in CSS: why we moved from RGB and HSL</a></p>
-            <p><sup id="back-ref-2"><a href="#ref-2" aria-label="Return to reference 2">2</a></sup><a href="https://urbanjost.github.io/M_ncurses/images/example.gif" data-preview="true">ncurses (click to preview)</a></p>
-        </section>
-    </div>
-    </article>
-    </main>
+    <Panel id="projects" title="projects.txt">
+        <ul class="projects-list">
+            <li><a href="https://github.com/moni-dz/it101-2-summative"><b>collectify</b> - <i>expense tracker (Java Swing app)</i></a></li>
+            <li><a href="https://github.com/moni-dz/oop-m2"><b>cloverpass</b> - <i>movie ticketing system (Windows Forms app)</i></a></li>
+            <li><a href="https://github.com/moni-dz/keiko"><b>keiko</b> - <i>flashcards app (web app using Next.js)</i></a></li>
+            <li><a href="https://github.com/moni-dz/im-wp"><b>untitled</b> - <i>management system for LML Engineering Solutions</i></a></li>
+            <li><a href="https://github.com/arcadetokyo/FARELY-ROWLET"><b>farely</b> - <i>fare expense tracker</i></a></li>
+        </ul>
+        <p>
+            existing projects that use web technologies (keiko) showcase my progress in web programming.
 
+            while the other projects are in Java and C#, they are still a testament to my programming skills.
+
+            unlike keiko, this site uses vanilla HTML5, CSS3, and JS (ECMAScript 2015 and above) as opposed to Next.js and Tailwind CSS.
+        </p>
+    </Panel>
+
+    <Panel id="skills" title="skills.txt">
+        <h3>this site was built using modern <span class="html5">HTML5</span>, <span class="css3">CSS3</span>, and <span class="es6">ES6 JS</span>.</h3>
+        <p>
+            each window is a semantic <code>&lt;article&gt;</code> with its own <code>&lt;header&gt;</code> and <code>&lt;section&gt;</code>. animations and hover effects are handled by <span class="css3">CSS</span> transitions and pseudo-classes.
+
+            content in windows like this uses <abbr title="CSS flexbox"><code>display: flex</code></abbr> for arrangement.
+
+            window dragging, window tabs, <a href="https://upload.wikimedia.org/wikipedia/commons/a/aa/Philips_PM5544.svg" data-preview="true">image previewing<sub>(try me!)</sub></a>, and theme toggling are implemented in <span class="es6">JS</span> using event listeners and DOM selectors.
+
+            this site is <a href="/assets/lighthouse.webp" data-preview="true">responsive</a> and works well on mobile devices, the experience is <abbr title="you can't really have &quot;windows&quot;">slightly different</abbr> but still functional.
+
+            implementing this site is a marker of my progress in this course and a demonstration of my skills.
+        </p>
+    </Panel>
+
+    <Panel id="refs" title="refs.txt">
+        <p><sup id="back-ref-1"><a href="#ref-1" aria-label="Return to reference 1">1</a></sup><a href="https://evilmartians.com/chronicles/oklch-in-css-why-quit-rgb-hsl">OKLCH in CSS: why we moved from RGB and HSL</a></p>
+        <p><sup id="back-ref-2"><a href="#ref-2" aria-label="Return to reference 2">2</a></sup><a href="https://urbanjost.github.io/M_ncurses/images/example.gif" data-preview="true">ncurses (click to preview)</a></p>
+    </Panel>
+</main>
