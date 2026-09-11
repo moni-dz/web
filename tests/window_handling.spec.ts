@@ -250,6 +250,20 @@ test('theme and window manager survive blog navigation and reload', async ({ pag
     );
 });
 
+test('blog post reload always lands scrolled to the title', async ({ page }) => {
+    await page.setViewportSize({ width: 1_280, height: 800 });
+    await page.goto('/blog/ghp-to-cfw');
+    await expect(page.locator('.blog-post-title')).toBeVisible();
+
+    await page.locator('.blog-page-content').evaluate((el) => { el.scrollTop = 400; });
+    await expect.poll(() => page.locator('.blog-page-content').evaluate((el) => el.scrollTop))
+        .toBeGreaterThan(0);
+
+    await page.reload();
+    await expect(page.locator('.blog-post-title')).toBeVisible();
+    await expect(page.locator('.blog-page-content')).toHaveJSProperty('scrollTop', 0);
+});
+
 test('mobile navigation uses document coordinates after scrolling', async ({ page }) => {
     await openPage(page, 375, 800);
     await waitForMode(page, 'on mobile');

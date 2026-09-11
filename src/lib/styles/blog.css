@@ -263,6 +263,10 @@ body:has(.blog-page-main)::before {
     font-weight: 600;
     line-height: 1.2;
     color: var(--post-accent);
+    /* Chromium/Firefox/WebKit pick different line-break points at the same container width
+       (their line-breakers don't just compare total run width, so this isn't a sizing bug);
+       balance mode makes all three converge on the same break. */
+    text-wrap: balance;
 }
 
 .blog-post-summary {
