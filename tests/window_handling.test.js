@@ -572,3 +572,46 @@ browserTest('mobile navigation uses document coordinates after scrolling', async
     equal(await session.execute(`return window.requestedScrollTop;`, []),
         await session.execute(`return window.expectedScrollTop;`, []));
 });
+
+browserTest('mobile accordion opens one panel at a time and collapses on repeat tap', async (context) => {
+    const session = await openPage(context, 375, 800);
+    await waitForMode(session, 'on mobile');
+
+    await session.execute(`document.querySelector('#projects .panel-toggle').click();`, []);
+    await pollScript(
+        session,
+        `return document.querySelector('#projects').classList.contains('active');`,
+        [],
+        'the tapped panel to open',
+    );
+
+    const state_after_open = await session.execute(`
+        return {
+            activeCount: document.querySelectorAll('.panel.active').length,
+            projectsExpanded: document.querySelector('#projects .panel-toggle').getAttribute('aria-expanded'),
+            welcomeActive: document.querySelector('#welcome').classList.contains('active'),
+            welcomeExpanded: document.querySelector('#welcome .panel-toggle').getAttribute('aria-expanded'),
+        };
+    `, []);
+
+    equal(state_after_open.activeCount, 1);
+    equal(state_after_open.projectsExpanded, 'true');
+    equal(state_after_open.welcomeActive, false);
+    equal(state_after_open.welcomeExpanded, 'false');
+
+    await session.execute(`document.querySelector('#projects .panel-toggle').click();`, []);
+    await pollScript(
+        session,
+        `return document.querySelectorAll('.panel.active').length === 0;`,
+        [],
+        'the reopened panel to collapse',
+    );
+
+    equal(
+        await session.execute(
+            `return document.querySelector('#projects .panel-toggle').getAttribute('aria-expanded');`,
+            [],
+        ),
+        'false',
+    );
+});

@@ -7,10 +7,14 @@
 <article class="panel" {id} aria-labelledby="{id}-title">
     <div class="terminal-window">
         <header class="terminal-header">
-            <h2 id="{id}-title">{title}</h2>
+            <h2 id="{id}-title">
+                <button type="button" class="panel-toggle" aria-expanded="false" aria-controls="{id}-content">
+                    {title}
+                </button>
+            </h2>
             {@render tabs?.()}
         </header>
-        <section class="terminal-content">
+        <section class="terminal-content" id="{id}-content">
             {@render children()}
         </section>
     </div>

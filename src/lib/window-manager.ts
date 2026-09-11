@@ -33,64 +33,6 @@ export function boundPanelPosition(target: Position, x: number, y: number, bound
     return target;
 }
 
-/**
- * Calculates the vertical pixels shared by a panel and the unobscured viewport.
- *
- * @param {{top: number, bottom: number}} rect
- * @param {number} viewportTop
- * @param {number} viewportBottom
- * @returns {number}
- */
-export function getVisibleHeight(rect: { top: number; bottom: number }, viewportTop: number, viewportBottom: number) {
-    if (rect.top > rect.bottom) throw new RangeError('Panel rectangle is inverted.');
-    if (viewportTop > viewportBottom) throw new RangeError('Viewport rectangle is inverted.');
-
-    const visibleTop = Math.max(rect.top, viewportTop);
-    const visibleBottom = Math.min(rect.bottom, viewportBottom);
-    return Math.max(0, visibleBottom - visibleTop);
-}
-
-/**
- * Chooses the most visible panel, using center distance to make equal overlaps deterministic.
- *
- * @param {{centerDistance: number, panel: *, visibleHeight: number}[]} measurements
- * @returns {* | null}
- */
-export function selectMostVisiblePanel <T>(measurements: { centerDistance: number; panel: T; visibleHeight: number }[]) {
-    if (!Array.isArray(measurements)) {
-        throw new TypeError('Panel measurements must be an array.');
-    }
-
-    let selected = null;
-
-    for (const measurement of measurements) {
-        if (measurement.visibleHeight < 0) {
-            throw new RangeError('Panel visibility cannot be negative.');
-        }
-
-        if (measurement.visibleHeight <= 0) continue;
-
-        if (!selected) {
-            selected = measurement;
-            continue;
-        }
-
-        if (measurement.visibleHeight > selected.visibleHeight) {
-            selected = measurement;
-            continue;
-        }
-
-        if (measurement.visibleHeight === selected.visibleHeight) {
-            if (measurement.centerDistance < selected.centerDistance) {
-                selected = measurement;
-            }
-        }
-    }
-
-    return selected?.panel ?? null;
-}
-
-
 export function initWindowManager() {
     const controller = new AbortController();
     const timeouts = new Set<number>();
@@ -141,6 +83,7 @@ export function initWindowManager() {
         nav: 'nav',
         navLink: 'nav a[data-panel]',
         panel: '.panel',
+        panelToggle: '.panel-toggle',
         panelsContainer: '.panels-container',
         previewContainer: '.preview-container',
         previewHeading: '.preview-heading',
@@ -168,7 +111,6 @@ export function initWindowManager() {
             startPanelY: 0,
         },
         isMobile: false,
-        mobileFocusFrame: 0,
         mobileQuery: null as MediaQueryList | null,
         navHeight: 0,
         panelBounds: new Map<HTMLElement, PanelBounds>(),
@@ -263,10 +205,6 @@ export function initWindowManager() {
         for (const panel of getInteractivePanels()) {
             refreshPanelMeasurements(panel);
         }
-
-        if (state.isMobile) {
-            queueMobilePanelFocus();
-        }
     }
 
     /**
@@ -330,8 +268,6 @@ export function initWindowManager() {
 
         if (state.isMobile) {
             resetPanelPositions();
-        } else {
-            cancelMobilePanelFocus();
         }
 
         setDeviceMessages();
@@ -340,11 +276,25 @@ export function initWindowManager() {
 
     function setActivePanel(panel: HTMLElement) {
         for (const candidate of getPanels()) {
-            candidate.classList.toggle('active', candidate === panel);
+            const isActive = candidate === panel;
+            candidate.classList.toggle('active', isActive);
+
+            const toggle = candidate.querySelector<HTMLButtonElement>(selectors.panelToggle);
+            toggle?.setAttribute('aria-expanded', String(isActive));
         }
 
         if (panel.id && panel.id !== 'preview') {
             updateNavLinks(panel.id);
+        }
+    }
+
+    /** Collapses every panel, leaving none active. Mobile-only accordion state. */
+    function collapseAllPanels() {
+        for (const candidate of getPanels()) {
+            candidate.classList.remove('active');
+
+            const toggle = candidate.querySelector<HTMLButtonElement>(selectors.panelToggle);
+            toggle?.setAttribute('aria-expanded', 'false');
         }
     }
 
@@ -482,7 +432,6 @@ export function initWindowManager() {
     /** Clears transient work so a back/forward-cache snapshot contains no half-finished action. */
     function suspendPage() {
         stopDrag();
-        cancelMobilePanelFocus();
         dismissMobileTooltips();
         cancelLater(state.resizeTimeout);
         state.resizeTimeout = 0;
@@ -1000,8 +949,8 @@ export function initWindowManager() {
             2: 'touch the image...',
         },
         welcome: {
-            1: `on mobile you may scroll to focus the windows.
-            toggle the theme by clicking the button below the navigation links.`,
+            1: `on mobile you may tap a window's title to open it, tap it again to close it.
+            toggle the theme by tapping the button at the end of the navigation links.`,
         },
     };
 
@@ -1023,52 +972,22 @@ export function initWindowManager() {
         }
     }
 
-    function bindMobilePanelFocus() {
-        const container = queryRequired(selectors.panelsContainer);
-        const listenerOptions = { passive: true };
+    /** Wires the mobile accordion: tapping a panel's title opens it and collapses the rest. */
+    function bindPanelToggles() {
+        for (const panel of getInteractivePanels()) {
+            const toggle = queryRequired<HTMLButtonElement>(selectors.panelToggle, panel);
 
-        on(window, 'scroll', queueMobilePanelFocus, listenerOptions);
-        on(container, 'scroll', queueMobilePanelFocus, listenerOptions);
-    }
+            on(toggle, 'click', () => {
+                if (!state.isMobile) return;
 
-    /** Limits scroll-driven layout reads to one per rendered frame. */
-    function queueMobilePanelFocus() {
-        if (!state.isMobile) return;
-        if (state.mobileFocusFrame !== 0) return;
+                if (panel.classList.contains('active')) {
+                    collapseAllPanels();
+                    return;
+                }
 
-        state.mobileFocusFrame = window.requestAnimationFrame(refreshMobilePanelFocus);
-    }
-
-    /** Cancels a mobile-only layout read when the page returns to its desktop mode. */
-    function cancelMobilePanelFocus() {
-        if (state.mobileFocusFrame === 0) return;
-
-        window.cancelAnimationFrame(state.mobileFocusFrame);
-        state.mobileFocusFrame = 0;
-    }
-
-    /** Selects the panel occupying the largest visible part of the mobile viewport. */
-    function refreshMobilePanelFocus() {
-        state.mobileFocusFrame = 0;
-        if (!state.isMobile) return;
-
-        const viewportBottom = window.innerHeight;
-        const viewportTop = Math.min(state.navHeight, viewportBottom);
-        const viewportCenter = viewportTop + (viewportBottom - viewportTop) / 2;
-        const measurements = getInteractivePanels().map((panel) => {
-            const rect = panel.getBoundingClientRect();
-            return {
-                centerDistance: Math.abs((rect.top + rect.bottom) / 2 - viewportCenter),
-                panel,
-                visibleHeight: getVisibleHeight(rect, viewportTop, viewportBottom),
-            };
-        });
-        const panel = selectMostVisiblePanel(measurements);
-
-        if (!panel) return;
-        if (panel.classList.contains('active')) return;
-
-        setActivePanel(panel);
+                focusPanel(panel);
+            });
+        }
     }
 
     function bindDesktopPanelFocus() {
@@ -1238,7 +1157,7 @@ export function initWindowManager() {
         bindTabs();
         setDeviceMessages();
         bindSwipes();
-        bindMobilePanelFocus();
+        bindPanelToggles();
         bindMobileTooltips();
         bindDesktopPanelFocus();
         bindDragging();

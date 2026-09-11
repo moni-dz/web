@@ -7,5 +7,5 @@
 </script>
 
 <button bind:this={toggle} id="toggle-theme" type="button" aria-label="Toggle color theme" aria-pressed="false">
-    <span class="theme-label">toggle light/dark mode</span>
+    <span class="theme-label" aria-hidden="true">◐</span>
 </button>

@@ -1,7 +1,7 @@
 import { deepEqual, equal, strictEqual, throws } from 'node:assert/strict';
 import test from 'node:test';
 
-import { boundPanelPosition, getVisibleHeight, selectMostVisiblePanel, initWindowManager } from '../src/lib/window-manager.ts';
+import { boundPanelPosition, initWindowManager } from '../src/lib/window-manager.ts';
 import { getPreferredTheme } from '../src/lib/theme.ts';
 import { formatPostDate, getTagColorIndex } from '../src/lib/markdown.ts';
 
@@ -19,12 +19,6 @@ test('post dates accept YAML timestamps and tag colors stay stable', () => {
  * @property {{x: number, y: number}} expected Expected bounded target coordinates.
  * @property {number} x Unbounded horizontal input coordinate.
  * @property {number} y Unbounded vertical input coordinate.
- */
-
-/**
- * @typedef {object} VisibilityCase
- * @property {number} expected Expected intersection height in CSS pixels.
- * @property {{bottom: number, top: number}} rect Vertical panel bounds in viewport coordinates.
  */
 
 test('browser entry points import under Node without touching the DOM', () => {
@@ -67,55 +61,4 @@ test('boundPanelPosition rejects non-finite positions and inverted bounds', () =
     throws(() => { boundPanelPosition(target, 0, Number.POSITIVE_INFINITY, bounds); }, TypeError);
     throws(() => { boundPanelPosition(target, 0, 0, { ...bounds, minX: 101 }); }, RangeError);
     throws(() => { boundPanelPosition(target, 0, 0, { ...bounds, minY: 101 }); }, RangeError);
-});
-
-test('getVisibleHeight covers the positive and negative overlap spaces', () => {
-    /** @type {VisibilityCase[]} */
-    const cases = [
-        { expected: 100, rect: { bottom: 250, top: 150 } },
-        { expected: 50, rect: { bottom: 150, top: 50 } },
-        { expected: 50, rect: { bottom: 350, top: 250 } },
-        { expected: 200, rect: { bottom: 350, top: 50 } },
-        { expected: 0, rect: { bottom: 100, top: 0 } },
-        { expected: 0, rect: { bottom: 400, top: 300 } },
-    ];
-
-    for (const test_case of cases) {
-        const result = getVisibleHeight(test_case.rect, 100, 300);
-        equal(result, test_case.expected);
-    }
-
-    equal(getVisibleHeight({ bottom: 200, top: 100 }, 100, 100), 0);
-    throws(() => { getVisibleHeight({ bottom: 0, top: 1 }, 100, 300); }, RangeError);
-    throws(() => { getVisibleHeight({ bottom: 200, top: 100 }, 300, 100); }, RangeError);
-});
-
-test('selectMostVisiblePanel is deterministic for absence, dominance, and ties', () => {
-    const first_panel = { id: 'first' };
-    const second_panel = { id: 'second' };
-
-    equal(selectMostVisiblePanel([]), null);
-    equal(selectMostVisiblePanel([
-        { centerDistance: 0, panel: first_panel, visibleHeight: 0 },
-    ]), null);
-
-    strictEqual(selectMostVisiblePanel([
-        { centerDistance: 1, panel: first_panel, visibleHeight: 20 },
-        { centerDistance: 100, panel: second_panel, visibleHeight: 21 },
-    ]), second_panel);
-
-    strictEqual(selectMostVisiblePanel([
-        { centerDistance: 9, panel: first_panel, visibleHeight: 20 },
-        { centerDistance: 8, panel: second_panel, visibleHeight: 20 },
-    ]), second_panel);
-
-    strictEqual(selectMostVisiblePanel([
-        { centerDistance: 8, panel: first_panel, visibleHeight: 20 },
-        { centerDistance: 8, panel: second_panel, visibleHeight: 20 },
-    ]), first_panel);
-
-    throws(() => selectMostVisiblePanel(null!), TypeError);
-    throws(() => selectMostVisiblePanel([
-        { centerDistance: 0, panel: first_panel, visibleHeight: -1 },
-    ]), RangeError);
 });
