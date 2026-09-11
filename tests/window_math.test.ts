@@ -1,11 +1,18 @@
-import { deepEqual, doesNotThrow, equal, strictEqual, throws } from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { deepEqual, equal, strictEqual, throws } from 'node:assert/strict';
 import test from 'node:test';
-import { runInNewContext } from 'node:vm';
 
-import window_handling from '../index.js';
+import { boundPanelPosition, getVisibleHeight, selectMostVisiblePanel, initWindowManager } from '../src/lib/window-manager.ts';
+import { getPreferredTheme } from '../src/lib/theme.ts';
+import { formatPostDate, getTagColorIndex } from '../src/lib/markdown.ts';
 
-const { boundPanelPosition, getVisibleHeight, selectMostVisiblePanel } = window_handling;
+test('post dates accept YAML timestamps and tag colors stay stable', () => {
+    equal(formatPostDate('2026-07-12'), 'July 12, 2026');
+    equal(formatPostDate('2026-07-12T00:00:00.000Z'), 'July 12, 2026');
+    for (const tag of ['javascript', 'markdown', 'web']) {
+        equal(getTagColorIndex(tag), getTagColorIndex(tag.toUpperCase()));
+        equal(getTagColorIndex(tag) >= 0 && getTagColorIndex(tag) < 5, true);
+    }
+});
 
 /**
  * @typedef {object} PositionCase
@@ -20,25 +27,9 @@ const { boundPanelPosition, getVisibleHeight, selectMostVisiblePanel } = window_
  * @property {{bottom: number, top: number}} rect Vertical panel bounds in viewport coordinates.
  */
 
-test('page bootstraps are inert when an ESM server has no document', () => {
-    // CommonJS takes explicit export branches. A fresh VM without module/document exercises the
-    // separate ESM/SSR fallthrough that previously dereferenced document during evaluation.
-    const script_paths = ['../index.js', '../theme.js', '../blog.js'];
-
-    for (const script_path of script_paths) {
-        const source = readFileSync(new URL(script_path, import.meta.url), 'utf8');
-        doesNotThrow(() => runInNewContext(source, { console }));
-    }
-});
-
-test('window handling exports only its pure regression surface', () => {
-    // A deliberately narrow API keeps browser state private while making the hard geometry rules
-    // executable under Node, where failures are quicker and easier to localize than browser tests.
-    deepEqual(Object.keys(window_handling).sort(), [
-        'boundPanelPosition',
-        'getVisibleHeight',
-        'selectMostVisiblePanel',
-    ]);
+test('browser entry points import under Node without touching the DOM', () => {
+    equal(typeof initWindowManager, 'function');
+    equal(typeof getPreferredTheme, 'function');
 });
 
 test('boundPanelPosition clamps both axes and preserves its stable target', () => {
@@ -123,7 +114,7 @@ test('selectMostVisiblePanel is deterministic for absence, dominance, and ties',
         { centerDistance: 8, panel: second_panel, visibleHeight: 20 },
     ]), first_panel);
 
-    throws(() => selectMostVisiblePanel(null), TypeError);
+    throws(() => selectMostVisiblePanel(null!), TypeError);
     throws(() => selectMostVisiblePanel([
         { centerDistance: 0, panel: first_panel, visibleHeight: -1 },
     ]), RangeError);

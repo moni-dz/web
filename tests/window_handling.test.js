@@ -1,12 +1,10 @@
 import { equal, match } from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
-import { fileURLToPath } from 'node:url';
 
-import static_server from './support/static_server.js';
+import { preview } from 'vite';
 import webdriver from './support/webdriver.js';
 
-const { startStaticServer } = static_server;
 const { isTimeoutError, isWebDriverAvailable, startWebDriver } = webdriver;
 
 const poll_attempts_max = 40;
@@ -50,15 +48,13 @@ let browser_timeout_reason = null;
 before(async () => {
     if (browser_skip_reason) return;
 
-    server = await startStaticServer({
-        close_timeout_ms: 1_000,
-        connections_max: 8,
-        headers_timeout_ms: 2_000,
-        host: '127.0.0.1',
-        keep_alive_timeout_ms: 1_000,
-        request_timeout_ms: 2_000,
-        root_path: fileURLToPath(new URL('..', import.meta.url)),
+    const vite = await preview({
+        preview: { host: '127.0.0.1', port: 0, open: false },
     });
+    server = {
+        origin: vite.resolvedUrls.local[0].replace(/\/$/, ''),
+        close: () => vite.close(),
+    };
 
     try {
         driver = await startWebDriver({
@@ -75,7 +71,7 @@ before(async () => {
             stderr_length_max: 4_096,
         });
     } catch (error) {
-        if (isTimeoutError(error)) {
+        if (!browser_required && isTimeoutError(error)) {
             browser_timeout_reason = `Browser setup timed out: ${error.message}`;
         } else {
             throw error;
@@ -167,7 +163,7 @@ async function openPage(test_context, width, height) {
     });
 
     await session.setWindowRect({ height, width, x: 0, y: 0 });
-    await session.navigate(`${server.origin}/index.html`);
+    await session.navigate(`${server.origin}/`);
 
     await pollScript(
         session,
@@ -200,7 +196,7 @@ function browserTest(name, body) {
         try {
             await body(test_context);
         } catch (error) {
-            if (isTimeoutError(error)) {
+            if (!browser_required && isTimeoutError(error)) {
                 test_context.skip(`Browser command timed out: ${error.message}`);
             } else {
                 throw error;
@@ -421,7 +417,7 @@ browserTest(
         equal(preview_policy.externalRel, 'noopener noreferrer');
         equal(preview_policy.externalTarget, '_blank');
 
-        await session.navigate(`${server.origin}/index.html`);
+        await session.navigate(`${server.origin}/`);
         await pollScript(
             session,
             'return document.querySelectorAll(".panel.active").length === 1;',
@@ -454,11 +450,11 @@ browserTest(
             const link = document.querySelector('#skills a[href="#skills"]');
             link.href = arguments[0];
             link.click();
-        `, [`${server.origin}/blog.html`]);
+        `, [`${server.origin}/blog`]);
 
         await pollScript(
             session,
-            `return window.location.pathname.endsWith('/blog.html');`,
+            `return window.location.pathname.endsWith('/blog');`,
             [],
             'normal navigation when the Popover API is unavailable',
         );
@@ -525,4 +521,54 @@ browserTest('blur and pagehide each cancel an in-progress drag', async (test_con
         equal(transform_after, transform_before);
         await session.releaseActions();
     }
+});
+
+browserTest('theme and window manager survive blog navigation and reload', async (context) => {
+    const session = await openPage(context, 1_280, 800);
+    const theme = await session.execute(`
+        document.querySelector('#toggle-theme').click();
+        return document.documentElement.dataset.theme;
+    `, []);
+    equal(await session.execute(`return document.querySelector('meta[name="theme-color"]').content;`, []),
+        theme === 'dark' ? '#232323' : '#eeeeee');
+
+    await session.execute(`document.querySelector('nav a[href="/blog"]').click();`, []);
+    await pollScript(session, `return !!document.querySelector('.blog-post-link');`, [], 'the blog index');
+    await session.execute(`document.querySelector('.blog-post-link').click();`, []);
+    await pollScript(session, `return document.querySelectorAll('.blog-toc-list a').length === 3;`, [], 'the post and contents');
+    equal(await session.execute(`return !!document.querySelector('.markdown-body .shiki span');`, []), true);
+    await session.execute(`document.querySelector('nav a[href="/"]').click();`, []);
+    await pollScript(session, `return document.querySelectorAll('.panel.active').length === 1;`, [], 'the restored portfolio');
+    await activatePanel(session, 'skills');
+    equal(await session.execute(`return document.documentElement.dataset.theme;`, []), theme);
+    equal(await session.execute(`return document.querySelectorAll('#toggle-theme').length;`, []), 1);
+
+    await session.execute(`document.querySelector('a[href="/assets/lighthouse.webp"]').click();`, []);
+    await pollScript(session, `return !!document.querySelector('#preview.image-preview img')?.complete;`, [], 'the image preview');
+    await session.navigate(`${server.origin}/`);
+    await pollScript(session, `return document.querySelectorAll('.panel.active').length === 1;`, [], 'the reloaded portfolio');
+    equal(await session.execute(`return document.documentElement.dataset.theme;`, []), theme);
+    equal(await session.execute(`return document.querySelector('meta[name="theme-color"]').content;`, []),
+        theme === 'dark' ? '#232323' : '#eeeeee');
+});
+
+browserTest('mobile navigation uses document coordinates after scrolling', async (context) => {
+    const session = await openPage(context, 375, 800);
+    await waitForMode(session, 'on mobile');
+    await activatePanel(session, 'projects');
+    await pollScript(session, `
+        const panel = document.querySelector('#projects').getBoundingClientRect();
+        const nav = document.querySelector('nav').getBoundingClientRect();
+        return Math.abs(panel.top - nav.bottom) <= 1;
+    `, [], 'the target panel to clear the fixed nav');
+    await session.execute(`window.scrollTo(0, 250);`, []);
+    await session.execute(`
+        window.scrollTo = (options) => { window.requestedScrollTop = options.top; };
+        const panel = document.querySelector('#projects');
+        window.expectedScrollTop = panel.getBoundingClientRect().top + window.scrollY -
+            document.querySelector('nav').offsetHeight;
+        document.querySelector('nav a[data-panel="projects"]').click();
+    `, []);
+    equal(await session.execute(`return window.requestedScrollTop;`, []),
+        await session.execute(`return window.expectedScrollTop;`, []));
 });

@@ -1,4 +1,117 @@
-(() => {
+type Position = { x: number; y: number };
+type PanelBounds = { minX: number; minY: number; maxX: number; maxY: number };
+
+/**
+ * Restricts a number to an inclusive range.
+ *
+ * @param {number} value
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
+function clamp(value: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * Updates a stable position object so the drag hot path does not allocate on every frame.
+ *
+ * @param {{x: number, y: number}} target
+ * @param {number} x
+ * @param {number} y
+ * @param {PanelBounds} bounds
+ * @returns {{x: number, y: number}}
+ */
+export function boundPanelPosition(target: Position, x: number, y: number, bounds: PanelBounds) {
+    if (!Number.isFinite(x)) throw new TypeError('Panel x position must be finite.');
+    if (!Number.isFinite(y)) throw new TypeError('Panel y position must be finite.');
+    if (bounds.minX > bounds.maxX) throw new RangeError('Panel x bounds are inverted.');
+    if (bounds.minY > bounds.maxY) throw new RangeError('Panel y bounds are inverted.');
+
+    target.x = clamp(x, bounds.minX, bounds.maxX);
+    target.y = clamp(y, bounds.minY, bounds.maxY);
+    return target;
+}
+
+/**
+ * Calculates the vertical pixels shared by a panel and the unobscured viewport.
+ *
+ * @param {{top: number, bottom: number}} rect
+ * @param {number} viewportTop
+ * @param {number} viewportBottom
+ * @returns {number}
+ */
+export function getVisibleHeight(rect: { top: number; bottom: number }, viewportTop: number, viewportBottom: number) {
+    if (rect.top > rect.bottom) throw new RangeError('Panel rectangle is inverted.');
+    if (viewportTop > viewportBottom) throw new RangeError('Viewport rectangle is inverted.');
+
+    const visibleTop = Math.max(rect.top, viewportTop);
+    const visibleBottom = Math.min(rect.bottom, viewportBottom);
+    return Math.max(0, visibleBottom - visibleTop);
+}
+
+/**
+ * Chooses the most visible panel, using center distance to make equal overlaps deterministic.
+ *
+ * @param {{centerDistance: number, panel: *, visibleHeight: number}[]} measurements
+ * @returns {* | null}
+ */
+export function selectMostVisiblePanel <T>(measurements: { centerDistance: number; panel: T; visibleHeight: number }[]) {
+    if (!Array.isArray(measurements)) {
+        throw new TypeError('Panel measurements must be an array.');
+    }
+
+    let selected = null;
+
+    for (const measurement of measurements) {
+        if (measurement.visibleHeight < 0) {
+            throw new RangeError('Panel visibility cannot be negative.');
+        }
+
+        if (measurement.visibleHeight <= 0) continue;
+
+        if (!selected) {
+            selected = measurement;
+            continue;
+        }
+
+        if (measurement.visibleHeight > selected.visibleHeight) {
+            selected = measurement;
+            continue;
+        }
+
+        if (measurement.visibleHeight === selected.visibleHeight) {
+            if (measurement.centerDistance < selected.centerDistance) {
+                selected = measurement;
+            }
+        }
+    }
+
+    return selected?.panel ?? null;
+}
+
+
+export function initWindowManager() {
+    const controller = new AbortController();
+    const timeouts = new Set<number>();
+    type Events = GlobalEventHandlersEventMap & WindowEventMap & MediaQueryListEventMap;
+    function on<K extends keyof Events>(target: EventTarget, type: K,
+        listener: (event: Events[K]) => void, options: AddEventListenerOptions = {}) {
+        target.addEventListener(type, listener as EventListener, { ...options, signal: controller.signal });
+    }
+    function later(callback: () => void, delay: number) {
+        const id = window.setTimeout(() => {
+            timeouts.delete(id);
+            callback();
+        }, delay);
+        timeouts.add(id);
+        return id;
+    }
+    function cancelLater(id: number) {
+        window.clearTimeout(id);
+        timeouts.delete(id);
+    }
+
     const MOBILE_QUERY = '(max-width: 31.25rem)';
     const RESIZE_DEBOUNCE_MS = 100;
     const HIGHLIGHT_MS = 2000;
@@ -40,13 +153,13 @@
     };
 
     const state = {
-        containerRect: null,
+        containerRect: null as DOMRect | null,
         drag: {
-            captureTarget: null,
+            captureTarget: null as HTMLElement | null,
             frame: 0,
             isActive: false,
-            panel: null,
-            pointerId: null,
+            panel: null as HTMLElement | null,
+            pointerId: null as number | null,
             pointerX: 0,
             pointerY: 0,
             startX: 0,
@@ -54,17 +167,16 @@
             startPanelX: 0,
             startPanelY: 0,
         },
-        isInitialized: false,
         isMobile: false,
         mobileFocusFrame: 0,
-        mobileQuery: null,
+        mobileQuery: null as MediaQueryList | null,
         navHeight: 0,
-        panelBounds: new Map(),
-        panelPositions: new Map(),
-        previewPanel: null,
-        previewSourcePanel: null,
+        panelBounds: new Map<HTMLElement, PanelBounds>(),
+        panelPositions: new Map<HTMLElement, Position>(),
+        previewPanel: null as HTMLDivElement | null,
+        previewSourcePanel: null as HTMLElement | null,
         resizeTimeout: 0,
-        tooltipDismissers: [],
+        tooltipDismissers: [] as (() => void)[],
         zIndexMax: 0,
     };
 
@@ -75,8 +187,8 @@
      * @param {Document | Element} [root=document] Element whose descendants should be searched.
      * @returns {Element}
      */
-    function queryRequired(selector, root = document) {
-        const element = root.querySelector(selector);
+    function queryRequired<T extends HTMLElement = HTMLElement>(selector: string, root: Document | Element = document) {
+        const element = root.querySelector<T>(selector);
         if (element) return element;
 
         throw new Error(`Missing required element: ${selector}`);
@@ -89,8 +201,8 @@
      * @param {Document | Element} [root=document] Element whose descendants should be searched.
      * @returns {Element[]}
      */
-    function queryAll(selector, root = document) {
-        return Array.from(root.querySelectorAll(selector));
+    function queryAll<T extends HTMLElement = HTMLElement>(selector: string, root: Document | Element = document) {
+        return Array.from(root.querySelectorAll<T>(selector));
     }
 
     function getPanels() {
@@ -107,7 +219,7 @@
      * @param {Element} panel
      * @returns {number}
      */
-    function getPanelZIndex(panel) {
+    function getPanelZIndex(panel: HTMLElement) {
         const styleValue = panel.style.zIndex || getComputedStyle(panel).zIndex;
         const zIndex = Number.parseInt(styleValue, 10);
 
@@ -121,22 +233,14 @@
     }
 
     /**
-     * @typedef {object} PanelBounds
-     * @property {number} maxX Furthest horizontal position inside the panel area.
-     * @property {number} maxY Furthest vertical position inside the panel area.
-     * @property {number} minX Nearest horizontal position inside the panel area.
-     * @property {number} minY Nearest vertical position inside the panel area.
-     */
-
-    /**
      * Calculates the coordinates a panel may occupy without leaving the visible panel area.
      *
      * @param {Element} panel
      * @returns {PanelBounds}
      */
-    function getPanelBounds(panel) {
+    function getPanelBounds(panel: HTMLElement) {
         const panelRect = panel.getBoundingClientRect();
-        const containerRect = state.containerRect;
+        const containerRect = state.containerRect!;
 
         // Dragging writes transforms relative to the panels container. Keeping bounds in the same
         // coordinate system avoids subtle offsets when the fixed nav changes height on mobile.
@@ -173,7 +277,7 @@
      *
      * @param {HTMLElement} panel
      */
-    function refreshPanelMeasurements(panel) {
+    function refreshPanelMeasurements(panel: HTMLElement) {
         const position = state.panelPositions.get(panel);
 
         clearPanelPositionStyles(panel);
@@ -188,16 +292,16 @@
 
     function bindLayoutMeasurements() {
         state.mobileQuery = window.matchMedia(MOBILE_QUERY);
-        state.isMobile = state.mobileQuery.matches;
+        state.isMobile = state.mobileQuery!.matches;
         refreshLayoutMeasurements();
 
-        state.mobileQuery.addEventListener('change', updateResponsiveMode);
-        window.addEventListener('resize', () => {
+        on(state.mobileQuery, 'change', updateResponsiveMode);
+        on(window, 'resize', () => {
             // A resize changes the drag coordinate system underneath the pointer. Ending the drag
             // immediately avoids applying one last frame with measurements from the old viewport.
             stopDrag();
-            window.clearTimeout(state.resizeTimeout);
-            state.resizeTimeout = window.setTimeout(() => {
+            cancelLater(state.resizeTimeout);
+            state.resizeTimeout = later(() => {
                 refreshLayoutMeasurements();
             }, RESIZE_DEBOUNCE_MS);
         });
@@ -208,7 +312,7 @@
      *
      * @param {MediaQueryListEvent} event
      */
-    function updateResponsiveMode(event) {
+    function updateResponsiveMode(event: MediaQueryListEvent) {
         setResponsiveMode(event.matches);
     }
 
@@ -217,7 +321,7 @@
      *
      * @param {boolean} isMobile
      */
-    function setResponsiveMode(isMobile) {
+    function setResponsiveMode(isMobile: boolean) {
         if (state.isMobile === isMobile) return;
 
         state.isMobile = isMobile;
@@ -234,7 +338,7 @@
         refreshLayoutMeasurements();
     }
 
-    function setActivePanel(panel) {
+    function setActivePanel(panel: HTMLElement) {
         for (const candidate of getPanels()) {
             candidate.classList.toggle('active', candidate === panel);
         }
@@ -244,7 +348,7 @@
         }
     }
 
-    function focusPanel(panel) {
+    function focusPanel(panel: HTMLElement | null) {
         if (!panel) return;
 
         if (state.isMobile) {
@@ -263,24 +367,16 @@
         }
     }
 
-    function scrollPanelIntoMobileView(panel) {
-        const container = queryRequired(selectors.panelsContainer);
-        const top = panel.offsetTop - state.navHeight / 2;
-
-        // The nav is fixed, so the scroll target is biased upward to keep the panel title visible.
-        // Mobile layout normally scrolls the page, but retaining the container scroll keeps the
-        // behavior correct if the CSS later gives the panel container its own scrollport.
-        container.scrollTo({
-            behavior: 'smooth',
-            top,
-        });
+    function scrollPanelIntoMobileView(panel: HTMLElement) {
+        // window.scrollTo takes a document coordinate, not a container-relative offset.
+        const top = panel.getBoundingClientRect().top + window.scrollY - state.navHeight;
         window.scrollTo({
             behavior: 'smooth',
             top,
         });
     }
 
-    function updateNavLinks(activeId) {
+    function updateNavLinks(activeId: string) {
         for (const link of queryAll(selectors.navLink)) {
             const isActive = link.dataset.panel === activeId;
 
@@ -296,10 +392,10 @@
 
     function bindNavLinks() {
         for (const link of queryAll(selectors.navLink)) {
-            link.addEventListener('click', (event) => {
+            on(link, 'click', (event) => {
                 event.preventDefault();
 
-                const targetId = link.dataset.panel;
+                const targetId = link.dataset.panel!;
                 const targetPanel = document.getElementById(targetId);
                 if (!targetPanel) return;
 
@@ -318,7 +414,7 @@
             if (!panel) continue;
 
             referenceToPanel.set(referenceNumber, panel.id);
-            reference.addEventListener('click', (event) => {
+            on(reference, 'click', (event) => {
                 event.preventDefault();
 
                 const backReference = document.getElementById(`back-ref-${referenceNumber}`);
@@ -330,7 +426,7 @@
         if (!refsPanel) return;
 
         for (const backReference of queryAll('sup[id^="back-ref-"]', refsPanel)) {
-            backReference.addEventListener('click', (event) => {
+            on(backReference, 'click', (event) => {
                 event.preventDefault();
 
                 const referenceNumber = backReference.id.slice('back-ref-'.length);
@@ -343,7 +439,7 @@
         }
     }
 
-    function activateReference(targetId, highlightElement) {
+    function activateReference(targetId: string, highlightElement: HTMLElement | null) {
         const targetPanel = document.getElementById(targetId);
         if (!targetPanel) return;
 
@@ -351,7 +447,7 @@
         highlightTemporary(highlightElement);
 
         if (state.isMobile && highlightElement) {
-            window.setTimeout(() => {
+            later(() => {
                 highlightElement.scrollIntoView({
                     behavior: 'smooth',
                     block: 'center',
@@ -360,27 +456,27 @@
         }
     }
 
-    function highlightTemporary(element) {
+    function highlightTemporary(element: HTMLElement | null) {
         if (!element) return;
 
         element.classList.add('highlight');
-        window.setTimeout(() => {
+        later(() => {
             element.classList.remove('highlight');
         }, HIGHLIGHT_MS);
     }
 
     function bindDragging() {
-        document.addEventListener('pointerdown', startDrag);
-        document.addEventListener('pointermove', queueDrag);
-        document.addEventListener('pointerup', stopDrag);
-        document.addEventListener('pointercancel', stopDrag);
-        document.addEventListener('lostpointercapture', stopDrag);
-        window.addEventListener('blur', stopDrag);
+        on(document, 'pointerdown', startDrag);
+        on(document, 'pointermove', queueDrag);
+        on(document, 'pointerup', stopDrag);
+        on(document, 'pointercancel', stopDrag);
+        on(document, 'lostpointercapture', stopDrag);
+        on(window, 'blur', stopDrag);
     }
 
     function bindPageLifecycle() {
-        window.addEventListener('pagehide', suspendPage);
-        window.addEventListener('pageshow', restorePage);
+        on(window, 'pagehide', suspendPage);
+        on(window, 'pageshow', restorePage);
     }
 
     /** Clears transient work so a back/forward-cache snapshot contains no half-finished action. */
@@ -388,15 +484,15 @@
         stopDrag();
         cancelMobilePanelFocus();
         dismissMobileTooltips();
-        window.clearTimeout(state.resizeTimeout);
+        cancelLater(state.resizeTimeout);
         state.resizeTimeout = 0;
     }
 
     /** @param {PageTransitionEvent} event */
-    function restorePage(event) {
+    function restorePage(event: PageTransitionEvent) {
         if (!event.persisted) return;
 
-        const isMobile = state.mobileQuery.matches;
+        const isMobile = state.mobileQuery!.matches;
         if (state.isMobile === isMobile) {
             refreshLayoutMeasurements();
             return;
@@ -412,14 +508,14 @@
      *
      * @param {PointerEvent} event
      */
-    function startDrag(event) {
+    function startDrag(event: PointerEvent) {
         if (state.isMobile || event.button !== 0) return;
         if (!event.isPrimary) return;
         if (state.drag.isActive) return;
         if (!(event.target instanceof Element)) return;
 
-        const panel = event.target.closest(selectors.panel);
-        const header = event.target.closest(selectors.terminalHeader);
+        const panel = event.target.closest<HTMLElement>(selectors.panel);
+        const header = event.target.closest<HTMLElement>(selectors.terminalHeader);
 
         if (!panel) return;
         if (!header) return;
@@ -467,7 +563,7 @@
      *
      * @param {PointerEvent} event
      */
-    function queueDrag(event) {
+    function queueDrag(event: PointerEvent) {
         if (!state.drag.isActive) return;
         if (event.pointerId !== state.drag.pointerId) return;
 
@@ -500,11 +596,11 @@
         }
     }
 
-    function stopDrag(event) {
+    function stopDrag(event?: Event) {
         if (!state.drag.isActive) return;
 
         if (event) {
-            if (typeof event.pointerId === 'number') {
+            if ('pointerId' in event && typeof event.pointerId === 'number') {
                 if (event.pointerId !== state.drag.pointerId) return;
             }
         }
@@ -552,7 +648,7 @@
      * @param {number} y Requested vertical position.
      * @param {PanelBounds} bounds Allowed movement area.
      */
-    function setPanelPosition(panel, x, y, bounds) {
+    function setPanelPosition(panel: HTMLElement, x: number, y: number, bounds: PanelBounds) {
         let position = state.panelPositions.get(panel);
         if (!position) {
             position = { x: 0, y: 0 };
@@ -569,7 +665,7 @@
     /** Re-clamps moved panels after active/inactive width transitions reach their final size. */
     function bindPanelResizeTransitions() {
         for (const panel of getInteractivePanels()) {
-            panel.addEventListener('transitionend', (event) => {
+            on(panel, 'transitionend', (event) => {
                 if (event.propertyName !== 'width') return;
                 if (!state.panelPositions.has(panel)) return;
 
@@ -583,7 +679,7 @@
      *
      * @param {HTMLElement} panel
      */
-    function clearPanelPositionStyles(panel) {
+    function clearPanelPositionStyles(panel: HTMLElement) {
         panel.style.removeProperty('height');
         panel.style.removeProperty('left');
         panel.style.removeProperty('position');
@@ -634,7 +730,7 @@
      * @param {string} url
      * @returns {boolean}
      */
-    function isImageUrl(url) {
+    function isImageUrl(url: string) {
         return IMAGE_FILE_PATTERN.test(new URL(url, window.location.href).pathname);
     }
 
@@ -644,7 +740,7 @@
      * @param {HTMLDivElement} panel Preview panel.
      * @param {string} url URL selected by the visitor.
      */
-    function renderPreview(panel, url) {
+    function renderPreview(panel: HTMLDivElement, url: string) {
         const container = queryRequired(selectors.previewContainer, panel);
         const heading = queryRequired(selectors.previewHeading, panel);
         const hint = state.isMobile
@@ -687,13 +783,14 @@
         iframe.title = 'Linked web content preview';
         iframe.src = url;
 
-        container.append(iframe, externalLink);
+        container.appendChild(iframe);
+        container.appendChild(externalLink);
     }
 
     function bindPreviewLinks() {
-        for (const link of queryAll(selectors.previewLink)) {
-            link.addEventListener('click', (event) => {
-                const previewShown = showPreview(link.href, link.closest(selectors.panel));
+        for (const link of queryAll<HTMLAnchorElement>(selectors.previewLink)) {
+            on(link, 'click', (event) => {
+                const previewShown = showPreview(link.href, link.closest<HTMLElement>(selectors.panel));
                 if (!previewShown) return;
 
                 event.preventDefault();
@@ -708,7 +805,7 @@
      * @param {Element | null} sourcePanel Panel containing the selected preview link.
      * @returns {boolean} Whether the popover opened and replaced normal link navigation.
      */
-    function showPreview(url, sourcePanel) {
+    function showPreview(url: string, sourcePanel: HTMLElement | null) {
         if (typeof HTMLElement.prototype.showPopover !== 'function') return false;
 
         state.previewSourcePanel = sourcePanel;
@@ -724,7 +821,7 @@
         state.previewPanel.style.zIndex = String(state.zIndexMax);
 
         state.previewPanel.removeEventListener('beforetoggle', restorePreviewSource);
-        state.previewPanel.addEventListener('beforetoggle', restorePreviewSource);
+        on(state.previewPanel, 'beforetoggle', restorePreviewSource);
 
         try {
             state.previewPanel.showPopover();
@@ -737,7 +834,7 @@
         }
     }
 
-    function restorePreviewSource(event) {
+    function restorePreviewSource(event: ToggleEvent) {
         if (event.newState !== 'closed') return;
 
         removePreviewPanel();
@@ -765,19 +862,19 @@
 
     function bindTabs() {
         for (const panel of getPanels()) {
-            const buttons = queryAll(selectors.tabButton, panel);
+            const buttons = queryAll<HTMLButtonElement>(selectors.tabButton, panel);
             if (buttons.length === 0) continue;
 
-            selectTab(panel, buttons[0].dataset.tab);
+            selectTab(panel, buttons[0].dataset.tab!);
 
             for (const button of buttons) {
-                button.addEventListener('click', () => {
-                    selectTab(panel, button.dataset.tab);
+                on(button, 'click', () => {
+                    selectTab(panel, button.dataset.tab!);
                 });
             }
 
             const tabGroup = queryRequired(selectors.tabGroup, panel);
-            tabGroup.addEventListener('keydown', (event) => {
+            on(tabGroup, 'keydown', (event) => {
                 switchTabWithKeyboard(event, panel);
             });
         }
@@ -789,21 +886,21 @@
      * @param {KeyboardEvent} event
      * @param {Element} panel Panel that owns the tab list.
      */
-    function switchTabWithKeyboard(event, panel) {
+    function switchTabWithKeyboard(event: KeyboardEvent, panel: HTMLElement) {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
         event.preventDefault();
 
-        const buttons = queryAll(selectors.tabButton, panel);
+        const buttons = queryAll<HTMLButtonElement>(selectors.tabButton, panel);
         if (buttons.length === 0) return;
 
-        const activeButton = panel.querySelector(`${selectors.tabButton}.tab-active`);
+        const activeButton = panel.querySelector<HTMLButtonElement>(`${selectors.tabButton}.tab-active`)!;
         const activeIndex = buttons.indexOf(activeButton);
         if (activeIndex < 0) return;
 
         const direction = event.key === 'ArrowLeft' ? -1 : 1;
         const nextIndex = (activeIndex + direction + buttons.length) % buttons.length;
 
-        selectTab(panel, buttons[nextIndex].dataset.tab, true);
+        selectTab(panel, buttons[nextIndex].dataset.tab!, true);
     }
 
     /**
@@ -813,9 +910,9 @@
      * @param {string} tabName Value from the tab button's data-tab attribute.
      * @param {boolean} [moveFocus=false] Whether keyboard focus should follow the selection.
      */
-    function selectTab(panel, tabName, moveFocus = false) {
-        for (const button of queryAll(selectors.tabButton, panel)) {
-            const isSelected = button.dataset.tab === tabName;
+    function selectTab(panel: HTMLElement, tabName: string, moveFocus = false) {
+        for (const button of queryAll<HTMLButtonElement>(selectors.tabButton, panel)) {
+            const isSelected = button.dataset.tab! === tabName;
 
             button.classList.toggle('tab-active', isSelected);
             button.setAttribute('aria-selected', String(isSelected));
@@ -835,7 +932,7 @@
 
         // Tab content can change panel dimensions, so drag bounds are refreshed after
         // layout settles.
-        window.setTimeout(() => {
+        later(() => {
             if (panel.id !== 'preview') {
                 refreshLayoutMeasurements();
             }
@@ -844,20 +941,20 @@
 
     function bindSwipes() {
         for (const panel of getPanels()) {
-            const tabGroup = panel.querySelector(selectors.tabGroup);
+            const tabGroup = panel.querySelector<HTMLElement>(selectors.tabGroup);
             if (!tabGroup) continue;
 
             let touchIsActive = false;
             let touchStartX = 0;
 
-            panel.addEventListener('touchstart', (event) => {
+            on(panel, 'touchstart', (event) => {
                 if (!state.isMobile) return;
 
                 touchIsActive = true;
                 touchStartX = event.touches[0].clientX;
             }, { passive: true });
 
-            panel.addEventListener('touchend', (event) => {
+            on(panel, 'touchend', (event) => {
                 if (!touchIsActive) return;
 
                 touchIsActive = false;
@@ -869,11 +966,11 @@
         }
     }
 
-    function activateSwipedTab(tabGroup, swipeDistance) {
+    function activateSwipedTab(tabGroup: HTMLElement, swipeDistance: number) {
         if (Math.abs(swipeDistance) < SWIPE_THRESHOLD_PX) return;
 
-        const buttons = queryAll(selectors.tabButton, tabGroup);
-        const activeButton = tabGroup.querySelector(`${selectors.tabButton}.tab-active`);
+        const buttons = queryAll<HTMLButtonElement>(selectors.tabButton, tabGroup);
+        const activeButton = tabGroup.querySelector<HTMLButtonElement>(`${selectors.tabButton}.tab-active`)!;
         const activeIndex = buttons.indexOf(activeButton);
         if (activeIndex < 0) return;
 
@@ -889,11 +986,11 @@
      * @param {string} elementId Placeholder ID in the form "panel-message-number".
      * @returns {string}
      */
-    function getDeviceMessage(elementId) {
+    function getDeviceMessage(elementId: string) {
         const [panelId, messageNumber] = elementId.split('-message-');
         const messages = state.isMobile ? mobileMessages : desktopMessages;
 
-        return messages[panelId]?.[messageNumber] ?? '';
+        return messages[panelId as keyof typeof messages]?.[messageNumber as "1"] ?? '';
     }
 
     const mobileMessages = {
@@ -930,8 +1027,8 @@
         const container = queryRequired(selectors.panelsContainer);
         const listenerOptions = { passive: true };
 
-        window.addEventListener('scroll', queueMobilePanelFocus, listenerOptions);
-        container.addEventListener('scroll', queueMobilePanelFocus, listenerOptions);
+        on(window, 'scroll', queueMobilePanelFocus, listenerOptions);
+        on(container, 'scroll', queueMobilePanelFocus, listenerOptions);
     }
 
     /** Limits scroll-driven layout reads to one per rendered frame. */
@@ -976,10 +1073,10 @@
 
     function bindDesktopPanelFocus() {
         for (const panel of getInteractivePanels()) {
-            panel.addEventListener('pointerdown', (event) => {
+            on(panel, 'pointerdown', (event) => {
                 if (state.isMobile) return;
                 if (!(event.target instanceof Element)) return;
-                if (event.target.closest(selectors.terminalHeader)) return;
+                if (event.target.closest<HTMLElement>(selectors.terminalHeader)) return;
                 focusPanel(panel);
             });
         }
@@ -987,13 +1084,13 @@
 
     function bindMobileTooltips() {
         for (const abbr of queryAll('abbr[title]')) {
-            let dismissOnOutsideTouch = null;
-            let tooltip = null;
+            let dismissOnOutsideTouch: ((event: TouchEvent) => void) | null = null;
+            let tooltip: HTMLDivElement | null = null;
             let dismissTimeout = 0;
 
             const dismissTooltip = () => {
                 if (dismissTimeout !== 0) {
-                    window.clearTimeout(dismissTimeout);
+                    cancelLater(dismissTimeout);
                     dismissTimeout = 0;
                 }
 
@@ -1008,24 +1105,24 @@
                 }
             };
 
-            abbr.addEventListener('touchstart', (event) => {
+            on(abbr, 'touchstart', (event) => {
                 if (!state.isMobile) return;
 
                 event.preventDefault();
                 dismissTooltip();
 
-                tooltip = createTooltip(abbr.getAttribute('title'));
+                tooltip = createTooltip(abbr.getAttribute('title')!);
                 positionTooltip(tooltip, abbr, event.touches[0].clientX);
 
-                dismissTimeout = window.setTimeout(dismissTooltip, TOOLTIP_DISMISS_MS);
+                dismissTimeout = later(dismissTooltip, TOOLTIP_DISMISS_MS);
 
                 dismissOnOutsideTouch = (outsideEvent) => {
-                    if (abbr.contains(outsideEvent.target)) return;
+                    if (outsideEvent.target instanceof Node && abbr.contains(outsideEvent.target)) return;
 
                     dismissTooltip();
                 };
 
-                document.addEventListener(
+                on(document, 
                     'touchstart',
                     dismissOnOutsideTouch,
                     { passive: true }
@@ -1049,7 +1146,7 @@
      * @param {string} text Tooltip text.
      * @returns {HTMLDivElement}
      */
-    function createTooltip(text) {
+    function createTooltip(text: string) {
         const tooltip = document.createElement('div');
         tooltip.textContent = text;
 
@@ -1083,7 +1180,7 @@
      * @param {Element} target Abbreviation that opened the tooltip.
      * @param {number} touchX Horizontal coordinate of the user's touch.
      */
-    function positionTooltip(tooltip, target, touchX) {
+    function positionTooltip(tooltip: HTMLElement, target: HTMLElement, touchX: number) {
         const rect = target.getBoundingClientRect();
         const tooltipRect = tooltip.getBoundingClientRect();
         const viewportPadding = 8;
@@ -1117,95 +1214,6 @@
         tooltip.style.opacity = '1';
     }
 
-    /**
-     * Restricts a number to an inclusive range.
-     *
-     * @param {number} value
-     * @param {number} min
-     * @param {number} max
-     * @returns {number}
-     */
-    function clamp(value, min, max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    /**
-     * Updates a stable position object so the drag hot path does not allocate on every frame.
-     *
-     * @param {{x: number, y: number}} target
-     * @param {number} x
-     * @param {number} y
-     * @param {PanelBounds} bounds
-     * @returns {{x: number, y: number}}
-     */
-    function boundPanelPosition(target, x, y, bounds) {
-        if (!Number.isFinite(x)) throw new TypeError('Panel x position must be finite.');
-        if (!Number.isFinite(y)) throw new TypeError('Panel y position must be finite.');
-        if (bounds.minX > bounds.maxX) throw new RangeError('Panel x bounds are inverted.');
-        if (bounds.minY > bounds.maxY) throw new RangeError('Panel y bounds are inverted.');
-
-        target.x = clamp(x, bounds.minX, bounds.maxX);
-        target.y = clamp(y, bounds.minY, bounds.maxY);
-        return target;
-    }
-
-    /**
-     * Calculates the vertical pixels shared by a panel and the unobscured viewport.
-     *
-     * @param {{top: number, bottom: number}} rect
-     * @param {number} viewportTop
-     * @param {number} viewportBottom
-     * @returns {number}
-     */
-    function getVisibleHeight(rect, viewportTop, viewportBottom) {
-        if (rect.top > rect.bottom) throw new RangeError('Panel rectangle is inverted.');
-        if (viewportTop > viewportBottom) throw new RangeError('Viewport rectangle is inverted.');
-
-        const visibleTop = Math.max(rect.top, viewportTop);
-        const visibleBottom = Math.min(rect.bottom, viewportBottom);
-        return Math.max(0, visibleBottom - visibleTop);
-    }
-
-    /**
-     * Chooses the most visible panel, using center distance to make equal overlaps deterministic.
-     *
-     * @param {{centerDistance: number, panel: *, visibleHeight: number}[]} measurements
-     * @returns {* | null}
-     */
-    function selectMostVisiblePanel(measurements) {
-        if (!Array.isArray(measurements)) {
-            throw new TypeError('Panel measurements must be an array.');
-        }
-
-        let selected = null;
-
-        for (const measurement of measurements) {
-            if (measurement.visibleHeight < 0) {
-                throw new RangeError('Panel visibility cannot be negative.');
-            }
-
-            if (measurement.visibleHeight <= 0) continue;
-
-            if (!selected) {
-                selected = measurement;
-                continue;
-            }
-
-            if (measurement.visibleHeight > selected.visibleHeight) {
-                selected = measurement;
-                continue;
-            }
-
-            if (measurement.visibleHeight === selected.visibleHeight) {
-                if (measurement.centerDistance < selected.centerDistance) {
-                    selected = measurement;
-                }
-            }
-        }
-
-        return selected?.panel ?? null;
-    }
-
     /** Focuses the panel named by the current fragment, if the fragment names a panel. */
     function focusPanelFromHash() {
         const requestedPanel = document.getElementById(window.location.hash.slice(1));
@@ -1218,13 +1226,10 @@
     }
 
     function bindLocationRouting() {
-        window.addEventListener('hashchange', focusPanelFromHash);
+        on(window, 'hashchange', focusPanelFromHash);
     }
 
     function init() {
-        if (state.isInitialized) return;
-        state.isInitialized = true;
-
         refreshZIndexMax();
         bindLayoutMeasurements();
         bindNavLinks();
@@ -1247,19 +1252,11 @@
         }
     }
 
-    const windowHandlingApi = {
-        boundPanelPosition,
-        getVisibleHeight,
-        selectMostVisiblePanel,
+    init();
+    return () => {
+        controller.abort();
+        suspendPage();
+        removePreviewPanel();
+        for (const id of timeouts) window.clearTimeout(id);
     };
-
-    if (typeof module !== 'undefined' && module.exports) {
-        module.exports = windowHandlingApi;
-    } else if (typeof document !== 'undefined') {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init, { once: true });
-        } else {
-            init();
-        }
-    }
-})();
+}

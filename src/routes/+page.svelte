@@ -1,53 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
+<script lang="ts">
+    import { onMount } from 'svelte';
+    import { initWindowManager } from '$lib/window-manager';
+    onMount(initWindowManager);
+</script>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <meta name="description" content="Lythe Marvin Lacre's terminal-inspired software development portfolio.">
-    <meta name="theme-color" content="#eeeeee" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#232323" media="(prefers-color-scheme: dark)">
+<svelte:options preserveWhitespace />
+
+<svelte:head>
     <title>lyt // software development portfolio</title>
-    <link rel="icon" href="assets/icon.webp" type="image/webp">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        rel="preload"
-        as="style"
-        onload="this.onload=null;this.rel='stylesheet'"
-        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&amp;display=swap"
-        crossorigin
-    >
-    <link
-        rel="preload"
-        as="font"
-        type="font/woff2"
-        href="https://fonts.gstatic.com/s/ibmplexmono/v19/-F6rfjptAgt5VM-kVkqdyU8n1ioStkdvp-8_FtFg95o.woff2"
-        crossorigin
-    >
-    <noscript>
-        <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&amp;display=swap"
-        >
-    </noscript>
-    <link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-    <nav aria-label="Primary navigation">
-        <ul>
-            <li><a href="#welcome" data-panel="welcome" aria-current="page">home</a></li>
-            <li><a href="#about" data-panel="about">about</a></li>
-            <li><a href="#projects" data-panel="projects">projects</a></li>
-            <li><a href="#skills" data-panel="skills">skills</a></li>
-            <li><a href="#refs" data-panel="refs">refs</a></li>
-            <li><a href="blog.html">blog</a></li>
-        </ul>
-        <button id="toggle-theme" type="button" aria-label="Toggle color theme" aria-pressed="false">
-            <span class="theme-label">toggle light/dark mode</span>
-        </button>
-    </nav>
+    <meta name="description" content="Lythe Marvin Lacre's terminal-inspired software development portfolio." />
+</svelte:head>
 
     <main class="panels-container" id="top">
     <article class="panel" id="welcome" aria-labelledby="welcome-title">
@@ -94,7 +56,7 @@
             <div class="terminal-tab" id="about-author" role="tabpanel" aria-labelledby="about-author-tab" hidden>
                 <div id="about-container">
                     <aside id="about-icon-container">
-                        <img id="about-icon" src="assets/icon.webp" alt="Portrait of Lythe Marvin Lacre" width="320" height="320">
+                        <img id="about-icon" src="/assets/icon.webp" alt="Portrait of Lythe Marvin Lacre" width="320" height="320">
                         <strong><span class="device-specific-message" id="about-message-2"></span></strong>
                         <abbr title="you should hover every element like me.">also hover me...</abbr>
                     </aside>
@@ -119,7 +81,7 @@
             <div class="terminal-tab" id="about-certifications" role="tabpanel" aria-labelledby="about-certifications-tab" hidden>
                 <h3>certifications</h3>
                 <p>
-                    I am an <a href="https://www.credly.com/badges/f2cdeeeb-2ce9-43a3-91c4-458687a65565/linked_in_profile"><b style="color: oklch(0.772 0.1738 64.55);">AWS</b> Certified AI Practitioner</a>.
+                    I am an <a href="https://www.credly.com/badges/f2cdeeeb-2ce9-43a3-91c4-458687a65565/linked_in_profile"><b class="badge-aws">AWS</b> Certified AI Practitioner</a>.
                 </p>
             </div>
         </section>
@@ -164,7 +126,7 @@
 
                 window dragging, window tabs, <a href="https://upload.wikimedia.org/wikipedia/commons/a/aa/Philips_PM5544.svg" data-preview="true">image previewing<sub>(try me!)</sub></a>, and theme toggling are implemented in <span class="es6">JS</span> using event listeners and DOM selectors.
 
-                this site is <a href="assets/lighthouse.webp" data-preview="true">responsive</a> and works well on mobile devices, the experience is <abbr title="you can't really have &quot;windows&quot;">slightly different</abbr> but still functional.
+                this site is <a href="/assets/lighthouse.webp" data-preview="true">responsive</a> and works well on mobile devices, the experience is <abbr title="you can't really have &quot;windows&quot;">slightly different</abbr> but still functional.
 
                 implementing this site is a marker of my progress in this course and a demonstration of my skills.
             </p>
@@ -185,7 +147,3 @@
     </article>
     </main>
 
-    <script src="theme.js" defer></script>
-    <script src="index.js" defer></script>
-</body>
-</html>

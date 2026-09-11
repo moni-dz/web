@@ -365,7 +365,10 @@ async function createSession(manager, session_options) {
                 alwaysMatch: {
                     browserName: 'chrome',
                     pageLoadStrategy: 'eager',
-                    'goog:chromeOptions': { args: session_options.browser_arguments },
+                    'goog:chromeOptions': {
+                        args: session_options.browser_arguments,
+                        ...(process.env.CHROME_BIN ? { binary: process.env.CHROME_BIN } : {}),
+                    },
                 },
             },
         },
