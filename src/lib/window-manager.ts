@@ -1,27 +1,12 @@
 type Position = { x: number; y: number };
 type PanelBounds = { minX: number; minY: number; maxX: number; maxY: number };
 
-/**
- * Restricts a number to an inclusive range.
- *
- * @param {number} value
- * @param {number} min
- * @param {number} max
- * @returns {number}
- */
+/** Restricts a number to an inclusive range. */
 function clamp(value: number, min: number, max: number) {
     return Math.max(min, Math.min(max, value));
 }
 
-/**
- * Updates a stable position object so the drag hot path does not allocate on every frame.
- *
- * @param {{x: number, y: number}} target
- * @param {number} x
- * @param {number} y
- * @param {PanelBounds} bounds
- * @returns {{x: number, y: number}}
- */
+/** Updates a stable position object so the drag hot path does not allocate on every frame. */
 export function boundPanelPosition(target: Position, x: number, y: number, bounds: PanelBounds) {
     if (!Number.isFinite(x)) throw new TypeError('Panel x position must be finite.');
     if (!Number.isFinite(y)) throw new TypeError('Panel y position must be finite.');
@@ -125,9 +110,8 @@ export function initWindowManager() {
     /**
      * Finds one required element and reports a clear error if the HTML is out of sync with the JS.
      *
-     * @param {string} selector CSS selector to search for.
-     * @param {Document | Element} [root=document] Element whose descendants should be searched.
-     * @returns {Element}
+     * @param selector CSS selector to search for.
+     * @param root Element whose descendants should be searched. Defaults to `document`.
      */
     function queryRequired<T extends HTMLElement = HTMLElement>(selector: string, root: Document | Element = document) {
         const element = root.querySelector<T>(selector);
@@ -139,9 +123,8 @@ export function initWindowManager() {
     /**
      * Returns a real array so callers can safely use array helpers such as filter and reduce.
      *
-     * @param {string} selector CSS selector to search for.
-     * @param {Document | Element} [root=document] Element whose descendants should be searched.
-     * @returns {Element[]}
+     * @param selector CSS selector to search for.
+     * @param root Element whose descendants should be searched. Defaults to `document`.
      */
     function queryAll<T extends HTMLElement = HTMLElement>(selector: string, root: Document | Element = document) {
         return Array.from(root.querySelectorAll<T>(selector));
@@ -155,12 +138,7 @@ export function initWindowManager() {
         return getPanels().filter((panel) => panel.id !== 'preview');
     }
 
-    /**
-     * Reads a panel's stacking order from either its inline style or the stylesheet.
-     *
-     * @param {Element} panel
-     * @returns {number}
-     */
+    /** Reads a panel's stacking order from either its inline style or the stylesheet. */
     function getPanelZIndex(panel: HTMLElement) {
         const styleValue = panel.style.zIndex || getComputedStyle(panel).zIndex;
         const zIndex = Number.parseInt(styleValue, 10);
@@ -174,12 +152,7 @@ export function initWindowManager() {
         }, 0);
     }
 
-    /**
-     * Calculates the coordinates a panel may occupy without leaving the visible panel area.
-     *
-     * @param {Element} panel
-     * @returns {PanelBounds}
-     */
+    /** Calculates the coordinates a panel may occupy without leaving the visible panel area. */
     function getPanelBounds(panel: HTMLElement) {
         const panelRect = panel.getBoundingClientRect();
         const containerRect = state.containerRect!;
@@ -212,8 +185,6 @@ export function initWindowManager() {
      *
      * Clearing the frozen drag size first lets responsive CSS choose the panel's new natural size.
      * The saved coordinates are then clamped against that size, so neither edge can become hidden.
-     *
-     * @param {HTMLElement} panel
      */
     function refreshPanelMeasurements(panel: HTMLElement) {
         const position = state.panelPositions.get(panel);
@@ -245,20 +216,12 @@ export function initWindowManager() {
         });
     }
 
-    /**
-     * Switches the interaction model when the CSS breakpoint changes.
-     *
-     * @param {MediaQueryListEvent} event
-     */
+    /** Switches the interaction model when the CSS breakpoint changes. */
     function updateResponsiveMode(event: MediaQueryListEvent) {
         setResponsiveMode(event.matches);
     }
 
-    /**
-     * Applies one responsive mode without duplicating page-lifetime event listeners.
-     *
-     * @param {boolean} isMobile
-     */
+    /** Applies one responsive mode without duplicating page-lifetime event listeners. */
     function setResponsiveMode(isMobile: boolean) {
         if (state.isMobile === isMobile) return;
 
@@ -427,7 +390,6 @@ export function initWindowManager() {
         state.resizeTimeout = 0;
     }
 
-    /** @param {PageTransitionEvent} event */
     function restorePage(event: PageTransitionEvent) {
         if (!event.persisted) return;
 
@@ -444,8 +406,6 @@ export function initWindowManager() {
      * Starts dragging an active panel from its title bar.
      *
      * Pointer events cover mouse, pen, and touch with one shared code path.
-     *
-     * @param {PointerEvent} event
      */
     function startDrag(event: PointerEvent) {
         if (state.isMobile || event.button !== 0) return;
@@ -497,11 +457,7 @@ export function initWindowManager() {
         }
     }
 
-    /**
-     * Saves the newest pointer position and limits visual updates to one per animation frame.
-     *
-     * @param {PointerEvent} event
-     */
+    /** Saves the newest pointer position and limits visual updates to one per animation frame. */
     function queueDrag(event: PointerEvent) {
         if (!state.drag.isActive) return;
         if (event.pointerId !== state.drag.pointerId) return;
@@ -582,10 +538,10 @@ export function initWindowManager() {
     /**
      * Moves a panel while keeping it inside its calculated bounds.
      *
-     * @param {HTMLElement} panel Panel being moved.
-     * @param {number} x Requested horizontal position.
-     * @param {number} y Requested vertical position.
-     * @param {PanelBounds} bounds Allowed movement area.
+     * @param panel Panel being moved.
+     * @param x Requested horizontal position.
+     * @param y Requested vertical position.
+     * @param bounds Allowed movement area.
      */
     function setPanelPosition(panel: HTMLElement, x: number, y: number, bounds: PanelBounds) {
         let position = state.panelPositions.get(panel);
@@ -613,11 +569,7 @@ export function initWindowManager() {
         }
     }
 
-    /**
-     * Removes drag-only styles without disturbing z-index, which preserves the user's focus order.
-     *
-     * @param {HTMLElement} panel
-     */
+    /** Removes drag-only styles without disturbing z-index, which preserves the user's focus order. */
     function clearPanelPositionStyles(panel: HTMLElement) {
         panel.style.removeProperty('height');
         panel.style.removeProperty('left');
@@ -636,11 +588,7 @@ export function initWindowManager() {
         state.panelPositions.clear();
     }
 
-    /**
-     * Builds the popover used to show linked images and web pages.
-     *
-     * @returns {HTMLDivElement}
-     */
+    /** Builds the popover used to show linked images and web pages. */
     function createPreviewPanel() {
         const panel = document.createElement('div');
 
@@ -663,12 +611,7 @@ export function initWindowManager() {
         return panel;
     }
 
-    /**
-     * Checks whether a URL points to a common browser-supported image format.
-     *
-     * @param {string} url
-     * @returns {boolean}
-     */
+    /** Checks whether a URL points to a common browser-supported image format. */
     function isImageUrl(url: string) {
         return IMAGE_FILE_PATTERN.test(new URL(url, window.location.href).pathname);
     }
@@ -676,8 +619,8 @@ export function initWindowManager() {
     /**
      * Replaces the preview contents with either a naturally sized image or a full web frame.
      *
-     * @param {HTMLDivElement} panel Preview panel.
-     * @param {string} url URL selected by the visitor.
+     * @param panel Preview panel.
+     * @param url URL selected by the visitor.
      */
     function renderPreview(panel: HTMLDivElement, url: string) {
         const container = queryRequired(selectors.previewContainer, panel);
@@ -740,9 +683,9 @@ export function initWindowManager() {
     /**
      * Opens a URL in the preview popover and remembers which panel should regain focus.
      *
-     * @param {string} url URL loaded by the preview frame.
-     * @param {Element | null} sourcePanel Panel containing the selected preview link.
-     * @returns {boolean} Whether the popover opened and replaced normal link navigation.
+     * @param url URL loaded by the preview frame.
+     * @param sourcePanel Panel containing the selected preview link.
+     * @returns Whether the popover opened and replaced normal link navigation.
      */
     function showPreview(url: string, sourcePanel: HTMLElement | null) {
         if (typeof HTMLElement.prototype.showPopover !== 'function') return false;
@@ -822,8 +765,7 @@ export function initWindowManager() {
     /**
      * Implements the standard left/right arrow behavior for an accessible tab list.
      *
-     * @param {KeyboardEvent} event
-     * @param {Element} panel Panel that owns the tab list.
+     * @param panel Panel that owns the tab list.
      */
     function switchTabWithKeyboard(event: KeyboardEvent, panel: HTMLElement) {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
@@ -845,9 +787,9 @@ export function initWindowManager() {
     /**
      * Selects one tab and synchronizes its CSS classes with its accessibility attributes.
      *
-     * @param {Element} panel Panel that owns the tabs.
-     * @param {string} tabName Value from the tab button's data-tab attribute.
-     * @param {boolean} [moveFocus=false] Whether keyboard focus should follow the selection.
+     * @param panel Panel that owns the tabs.
+     * @param tabName Value from the tab button's data-tab attribute.
+     * @param moveFocus Whether keyboard focus should follow the selection. Defaults to `false`.
      */
     function selectTab(panel: HTMLElement, tabName: string, moveFocus = false) {
         for (const button of queryAll<HTMLButtonElement>(selectors.tabButton, panel)) {
@@ -922,8 +864,7 @@ export function initWindowManager() {
     /**
      * Chooses the text inserted into a device-specific message placeholder.
      *
-     * @param {string} elementId Placeholder ID in the form "panel-message-number".
-     * @returns {string}
+     * @param elementId Placeholder ID in the form "panel-message-number".
      */
     function getDeviceMessage(elementId: string) {
         const [panelId, messageNumber] = elementId.split('-message-');
@@ -1031,12 +972,7 @@ export function initWindowManager() {
         }
     }
 
-    /**
-     * Creates the tooltip used for abbreviations on touch-sized screens.
-     *
-     * @param {string} text Tooltip text.
-     * @returns {HTMLDivElement}
-     */
+    /** Creates the tooltip used for abbreviations on touch-sized screens. */
     function createTooltip(text: string) {
         const tooltip = document.createElement('div');
         tooltip.textContent = text;
@@ -1067,9 +1003,9 @@ export function initWindowManager() {
     /**
      * Positions a tooltip near its trigger while keeping it inside the viewport.
      *
-     * @param {HTMLElement} tooltip Tooltip to move.
-     * @param {Element} target Abbreviation that opened the tooltip.
-     * @param {number} touchX Horizontal coordinate of the user's touch.
+     * @param tooltip Tooltip to move.
+     * @param target Abbreviation that opened the tooltip.
+     * @param touchX Horizontal coordinate of the user's touch.
      */
     function positionTooltip(tooltip: HTMLElement, target: HTMLElement, touchX: number) {
         const rect = target.getBoundingClientRect();

@@ -14,12 +14,14 @@ test('post dates accept YAML timestamps and tag colors stay stable', () => {
     }
 });
 
-/**
- * @typedef {object} PositionCase
- * @property {{x: number, y: number}} expected Expected bounded target coordinates.
- * @property {number} x Unbounded horizontal input coordinate.
- * @property {number} y Unbounded vertical input coordinate.
- */
+type PositionCase = {
+    /** Expected bounded target coordinates. */
+    expected: { x: number; y: number };
+    /** Unbounded horizontal input coordinate. */
+    x: number;
+    /** Unbounded vertical input coordinate. */
+    y: number;
+};
 
 test('browser entry points import under Node without touching the DOM', () => {
     expect(typeof initWindowManager).toBe('function');
@@ -29,8 +31,7 @@ test('browser entry points import under Node without touching the DOM', () => {
 test('boundPanelPosition clamps both axes and preserves its stable target', () => {
     const bounds = { maxX: 100, maxY: 90, minX: 0, minY: 10 };
 
-    /** @type {PositionCase[]} */
-    const cases = [
+    const cases: PositionCase[] = [
         { expected: { x: 0, y: 90 }, x: -1, y: 91 },
         { expected: { x: 50, y: 50 }, x: 50, y: 50 },
         { expected: { x: 100, y: 10 }, x: 101, y: 9 },
