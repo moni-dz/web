@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://4rsxyzt.fyi/sitemap.xml

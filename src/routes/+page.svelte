@@ -8,8 +8,8 @@
 <svelte:options preserveWhitespace />
 
 <svelte:head>
-    <title>lyt // software development portfolio</title>
-    <meta name="description" content="Lythe Marvin Lacre's terminal-inspired software development portfolio." />
+    <title>lyt</title>
+    <meta name="description" content="software engineer" />
 </svelte:head>
 
 <main class="panels-container" id="top">

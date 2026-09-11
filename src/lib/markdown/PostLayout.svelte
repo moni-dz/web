@@ -1,12 +1,17 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { formatPostDate, getTagColorIndex } from '$lib/markdown';
+    import { onMount, type Snippet } from 'svelte';
+    import { formatPostDate, getTagColorIndex, resolveAccentHue } from '$lib/markdown';
     import type { PostMetadata } from '$lib/posts';
 
-    export let title: PostMetadata['title'];
-    export let date: PostMetadata['date'];
-    export let summary: PostMetadata['summary'];
-    export let tags: PostMetadata['tags'] = [];
+    let {
+        title,
+        date,
+        summary,
+        tags = [],
+        accent = undefined,
+        children,
+    }: PostMetadata & { children: Snippet } = $props();
+
     let body: HTMLDivElement;
     let toc: HTMLElement;
     let list: HTMLOListElement;
@@ -32,23 +37,26 @@
     <meta name="description" content={summary} />
 </svelte:head>
 
-<article class="blog-post" aria-labelledby="blog-post-heading">
-    <a class="blog-back-button" href="/blog">&larr; all posts</a>
+<article class="blog-post" aria-labelledby="blog-post-heading" style="--accent-hue: {resolveAccentHue(accent, title)}">
     <header class="blog-post-header">
-        <p class="blog-post-meta"><time class="blog-post-date" datetime={date}>{formatPostDate(date)}</time></p>
-        <h2 class="blog-post-title" id="blog-post-heading">{title}</h2>
-        <p class="blog-post-summary">{summary}</p>
-        <div class="blog-post-tags" aria-label="Post tags">
-            {#each tags as tag}
-                <span class={`blog-tag blog-tag-color-${getTagColorIndex(tag)}`}>{tag}</span>
-            {/each}
+        <div class="blog-post-header-main">
+            <h2 class="blog-post-title" id="blog-post-heading">{title}</h2>
+            <p class="blog-post-summary">{summary}</p>
         </div>
+        <aside class="blog-post-header-aside">
+            <div class="blog-post-tags" aria-label="Post tags">
+                {#each tags as tag (tag)}
+                    <span class={`blog-tag blog-tag-color-${getTagColorIndex(tag)}`}>{tag}</span>
+                {/each}
+            </div>
+            <p class="blog-post-meta"><time class="blog-post-date" datetime={date}>{formatPostDate(date)}</time></p>
+        </aside>
     </header>
     <div class="blog-reading-layout">
         <nav bind:this={toc} class="blog-toc" aria-labelledby="blog-toc-heading" hidden>
             <h3 id="blog-toc-heading">contents</h3>
             <ol bind:this={list} class="blog-toc-list"></ol>
         </nav>
-        <div bind:this={body} class="markdown-body"><slot /></div>
+        <div bind:this={body} class="markdown-body">{@render children()}</div>
     </div>
 </article>

@@ -1,8 +1,11 @@
+export type AccentColor = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet';
+
 export interface PostMetadata {
     title: string;
     date: string;
     summary: string;
     tags: string[];
+    accent?: AccentColor;
 }
 
 export const posts = Object.entries(import.meta.glob<PostMetadata>('/src/posts/*.md', {

@@ -8,7 +8,7 @@ export function GET() {
 <rss version="2.0"><channel>
 <title>blog // lyt</title>
 <link>${siteUrl}/blog</link>
-<description>Notes about software, projects, and learning from Lythe Marvin Lacre.</description>
+<description>short posts about software, projects, and other interests.</description>
 <language>en</language>
 ${posts.map((post) => `<item>
 <title>${escapeXml(post.title)}</title>

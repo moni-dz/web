@@ -464,6 +464,7 @@ nav ul li a.active-link:hover {
     background-color: var(--overlay-color);
     transition: opacity 0.3s ease;
     opacity: 1;
+    pointer-events: none;
 }
 
 .panel:not(.active):hover .terminal-window::after {
@@ -472,7 +473,6 @@ nav ul li a.active-link:hover {
 
 .active .terminal-window::after {
     opacity: 0;
-    pointer-events: none;
 }
 
 /* panel placements */
