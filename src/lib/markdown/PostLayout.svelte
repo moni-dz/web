@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount, type Snippet } from 'svelte';
-    import { formatPostDate, getTagColorIndex, resolveAccentHue } from '$lib/markdown';
+    import PostTags from '$lib/components/PostTags.svelte';
+    import { formatPostDate, resolveAccentHue } from '$lib/markdown';
     import type { PostMetadata } from '$lib/posts';
 
     let {
@@ -44,11 +45,7 @@
             <p class="blog-post-summary">{summary}</p>
         </div>
         <aside class="blog-post-header-aside">
-            <div class="blog-post-tags" aria-label="Post tags">
-                {#each tags as tag (tag)}
-                    <span class={`blog-tag blog-tag-color-${getTagColorIndex(tag)}`}>{tag}</span>
-                {/each}
-            </div>
+            <PostTags {tags} />
             <p class="blog-post-meta"><time class="blog-post-date" datetime={date}>{formatPostDate(date)}</time></p>
         </aside>
     </header>

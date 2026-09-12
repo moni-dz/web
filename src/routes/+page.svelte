@@ -98,7 +98,7 @@
     </Panel>
 
     <Panel id="skills" title="skills.txt">
-        <h3>this site was built using <span class="html5">Svelte 5</span>.</h3>
+        <h3>this site was built using <span class="html5">SvelteKit</span>.</h3>
         <p>
             each window is a semantic <code>&lt;article&gt;</code> with its own <code>&lt;header&gt;</code> and <code>&lt;section&gt;</code>. animations and hover effects are handled by <span class="css3">CSS</span> transitions and pseudo-classes.
 

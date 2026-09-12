@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { formatPostDate, getTagColorIndex, resolveAccentHue } from '$lib/markdown';
+    import PostTags from '$lib/components/PostTags.svelte';
+    import { formatPostDate, resolveAccentHue } from '$lib/markdown';
     import type { PageData } from './$types';
     let { data }: { data: PageData } = $props();
 </script>
@@ -23,11 +24,7 @@
                             <span class="blog-post-link-summary">{post.summary}</span>
                         </div>
                         <div class="blog-post-link-aside">
-                            <div class="blog-post-tags" aria-label="Post tags">
-                                {#each post.tags as tag (tag)}
-                                    <span class={`blog-tag blog-tag-color-${getTagColorIndex(tag)}`}>{tag}</span>
-                                {/each}
-                            </div>
+                            <PostTags tags={post.tags} />
                             <span class="blog-post-link-meta">{formatPostDate(post.date)}</span>
                         </div>
                     </a>
