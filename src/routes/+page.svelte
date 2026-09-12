@@ -82,10 +82,10 @@
 
     <Panel id="projects" title="projects.txt">
         <ul class="projects-list">
+            <li><a href="https://github.com/moni-dz/im-wp"><b>four (iv)</b> - <i>image viewer using GPUI</i></a></li>
             <li><a href="https://github.com/moni-dz/it101-2-summative"><b>collectify</b> - <i>expense tracker (Java Swing app)</i></a></li>
             <li><a href="https://github.com/moni-dz/oop-m2"><b>cloverpass</b> - <i>movie ticketing system (Windows Forms app)</i></a></li>
             <li><a href="https://github.com/moni-dz/keiko"><b>keiko</b> - <i>flashcards app (web app using Next.js)</i></a></li>
-            <li><a href="https://github.com/moni-dz/im-wp"><b>untitled</b> - <i>management system for LML Engineering Solutions</i></a></li>
             <li><a href="https://github.com/arcadetokyo/FARELY-ROWLET"><b>farely</b> - <i>fare expense tracker</i></a></li>
         </ul>
         <p>
