@@ -57,3 +57,88 @@
         <div bind:this={body} class="markdown-body">{@render children()}</div>
     </div>
 </article>
+
+<style>
+    .blog-post {
+        width: min(100%, 72rem);
+        margin: 0 auto;
+    }
+
+    .blog-post-meta {
+        color: light-dark(oklch(50% 0 0), oklch(65% 0 0));
+        font-size: 1.1rem;
+        font-weight: 500;
+        justify-content: flex-end;
+    }
+
+    .blog-post-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(11rem, 14rem);
+        grid-template-rows: auto auto;
+        column-gap: clamp(1.5rem, 4vw, 3rem);
+        row-gap: 0.5rem;
+        align-items: start;
+        /* Safari needs slightly more room above the title than Chromium and Firefox. */
+        margin-top: 0.75rem;
+        margin-bottom: 2rem;
+    }
+
+    .blog-post-header-main,
+    .blog-post-header-aside {
+        display: grid;
+        grid-row: 1 / 3;
+        grid-template-rows: subgrid;
+        align-items: center;
+    }
+
+    .blog-post-header-main {
+        grid-column: 1;
+    }
+
+    .blog-post-header-aside {
+        grid-column: 2;
+    }
+
+    .blog-post-title,
+    .blog-post-summary {
+        display: block;
+    }
+
+    .blog-post-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .blog-post-title {
+        font-family: 'Fraunces', 'Crimson Pro', Georgia, serif;
+        font-size: clamp(2rem, 4vw, 3rem);
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--post-accent);
+        /* Balance makes line breaks consistent across rendering engines. */
+        text-wrap: balance;
+    }
+
+    .blog-post-summary {
+        font-size: 1.2rem;
+        color: var(--post-accent-subtle);
+    }
+
+    @media (max-width: 48rem) {
+        .blog-post-header,
+        .blog-post-header-main {
+            display: block;
+        }
+
+        .blog-post-header-aside {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 1rem;
+        }
+    }
+</style>

@@ -31,3 +31,95 @@
 </nav>
 
 {@render children()}
+
+<style>
+    nav {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        background-color: var(--text-color);
+        z-index: 1000;
+        height: var(--nav-height);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2rem;
+    }
+
+    nav ul {
+        display: flex;
+        list-style: none;
+        margin: 0;
+    }
+
+    nav ul li {
+        margin: 0 0.5rem;
+    }
+
+    nav ul li a {
+        display: flex;
+        align-items: center;
+        color: var(--bg-color);
+        font-size: 1rem;
+        padding: 0.25rem 0.75rem;
+    }
+
+    nav ul li a:hover,
+    nav ul li a:global(.active-link),
+    nav ul li a[aria-current="page"] {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+    }
+
+    nav ul li a:hover {
+        opacity: 0.9;
+    }
+
+    nav ul li a:global(.active-link):hover {
+        opacity: 0.8;
+    }
+
+    @media (max-width: 31.25rem) {
+        nav.blog-page-nav {
+            height: var(--nav-height);
+            flex-direction: row;
+            padding: 0.5rem 1rem;
+        }
+
+        nav.blog-page-nav ul {
+            padding: 0;
+        }
+
+        nav.blog-page-nav ul li {
+            margin: 0;
+        }
+
+        nav {
+            padding: 0 0.5rem;
+            gap: 0.75rem;
+        }
+
+        nav ul li:has(a[data-panel]) {
+            display: none;
+        }
+
+        nav ul {
+            flex: 1 1 auto;
+            min-width: 0;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            justify-content: flex-start;
+        }
+
+        nav ul li {
+            margin: 0.25rem;
+            flex: 0 0 auto;
+        }
+
+        nav ul li a {
+            padding: 0.5rem;
+            min-height: 2.75rem;
+        }
+    }
+</style>

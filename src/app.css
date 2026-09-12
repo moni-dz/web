@@ -44,23 +44,6 @@ body {
     overflow: hidden;
 }
 
-/* additional font styling */
-.badge-aws {
-    color: var(--aws-badge-color);
-}
-
-.html5 {
-    color: light-dark(oklch(40.37% 0.1544 60.71), oklch(76.85% 0.1926 60.71));
-}
-
-.css3 {
-    color: light-dark(oklch(37.87% 0.1454 255.71), oklch(73.7% 0.1548 241.47));
-}
-
-.es6 {
-    color: light-dark(oklch(40.56% 0.1322 93.37), oklch(87.09% 0.1817 93.37));
-}
-
 :is(h1, h2, h3, h4, h5, h6) {
     text-wrap: pretty;
 }
@@ -235,142 +218,6 @@ abbr[title] {
     position: relative;
     text-decoration: underline dotted;
 }
-/* content layout */
-
-#about-container {
-    display: flex;
-    gap: 1rem;
-    position: relative;
-    align-items: stretch;
-}
-
-#about-icon-container {
-    flex: 0 0 30%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-right: 1.25rem;
-}
-
-#about-container::after {
-    content: '';
-    position: absolute;
-    left: calc(30%);
-    top: 0;
-    bottom: 0;
-    width: 0.125rem;
-    background-color: var(--border-color);
-}
-
-#about-icon {
-    max-width: 100%;
-    height: auto;
-    margin-bottom: 0.5rem;
-    filter: grayscale(100%);
-    transition: filter 0.3s ease;
-    border: 0.0625rem solid var(--text-color);
-}
-
-#about-icon:hover {
-    filter: grayscale(0%);
-}
-
-#about-text {
-    flex: 1;
-    padding: 0rem 0rem 0rem 0.5rem;
-}
-
-/* nav bar style */
-nav {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    background-color: var(--text-color);
-    z-index: 1000;
-    height: var(--nav-height);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-}
-
-nav ul {
-    display: flex;
-    list-style: none;
-    margin: 0;
-}
-
-nav ul li {
-    margin: 0 0.5rem;
-}
-
-nav ul li a {
-    display: flex;
-    align-items: center;
-    color: var(--bg-color);
-    font-size: 1rem;
-    padding: 0.25rem 0.75rem;
-}
-
-nav ul li a:hover,
-nav ul li a.active-link,
-nav ul li a[aria-current="page"] {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-}
-
-nav ul li a:hover {
-    opacity: 0.9;
-}
-
-nav ul li a.active-link:hover {
-    opacity: 0.8;
-}
-
-/* toggle theme button */
-#toggle-theme {
-    background: none;
-    border: none;
-    color: var(--bg-color);
-    font-size: 1.1rem;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.3s;
-}
-
-#toggle-theme:hover {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    opacity: 0.9;
-}
-
-/* panel layout */
-.panels-container {
-    margin-top: var(--nav-height);
-    position: relative;
-    z-index: 0;
-    height: calc(100vh - var(--nav-height));
-    height: calc(100dvh - var(--nav-height));
-    overflow: hidden;
-    padding: 1.25rem;
-    box-sizing: border-box;
-}
-
-/* panel container background */
-.panels-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-color: var(--bg-color);
-    opacity: calc(1 - var(--bg-opacity));
-    z-index: -1;
-    pointer-events: none;
-}
-
 .panel {
     position: absolute;
     width: 45%;
@@ -407,10 +254,6 @@ nav ul li a.active-link:hover {
     cursor: default;
 }
 
-.terminal-tabs {
-    margin: -0.4rem 0rem;
-}
-
 .terminal-content {
     display: flex;
     flex-direction: column;
@@ -418,42 +261,6 @@ nav ul li a.active-link:hover {
     justify-content: center;
     flex: 1;
     padding: 1.25rem;
-}
-
-.terminal-tab {
-    display: none;
-    height: 100%;
-    width: 100%;
-}
-
-.terminal-tab.tab-active {
-    display: flex;
-    flex-direction: column;
-}
-
-/* children should use the full space, since terminal-tab is merely an organizational container */
-.terminal-tab > * {
-    flex: 1;
-    width: 100%;
-    height: 100%;
-}
-
-.tab-button {
-    background: none;
-    border: none;
-    color: var(--bg-color);
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
-    transition: opacity 0.3s ease;
-}
-
-.tab-button:hover {
-    text-decoration: underline;
-}
-
-.tab-button.tab-active {
-    opacity: 1;
-    text-decoration: underline;
 }
 
 /* panel focus state */
@@ -723,49 +530,6 @@ sup.highlight {
         font-size: 96%;
     }
 
-    nav {
-        padding: 0 0.5rem;
-        gap: 0.75rem;
-    }
-
-    nav ul li:has(a[data-panel]) {
-        display: none;
-    }
-
-    nav ul {
-        flex: 1 1 auto;
-        min-width: 0;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        justify-content: flex-start;
-    }
-
-    nav ul li {
-        margin: 0.25rem;
-        flex: 0 0 auto;
-    }
-
-    nav ul li a {
-        padding: 0.5rem;
-        min-height: 2.75rem;
-    }
-
-    #toggle-theme {
-        padding: 0.5rem;
-        min-width: 2.75rem;
-        min-height: 2.75rem;
-        flex-shrink: 0;
-    }
-
-    .panels-container {
-        height: auto;
-        min-height: calc(100vh - var(--nav-height));
-        min-height: calc(100dvh - var(--nav-height));
-        padding: 1rem;
-        position: relative;
-    }
-
     .panel:not(#preview) {
         position: relative !important;
         height: auto !important;
@@ -799,52 +563,6 @@ sup.highlight {
 
     .panel:not(#preview) .terminal-header h2 {
         font-size: 120%;
-    }
-
-    #about-container {
-        flex-direction: column;
-    }
-
-    #about-icon-container {
-        flex: 0 0 auto;
-        padding-right: 0;
-        padding-bottom: 1.25rem;
-        border-bottom: 0.125rem solid var(--border-color);
-    }
-
-    #about-container::after {
-        display: none;
-    }
-
-    #about-text {
-        padding-left: 0;
-    }
-
-    .terminal-tabs {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .tab-button {
-        display: flex;
-        align-items: center;
-        color: var(--text-color);
-        padding: 0 0.5rem;
-        min-height: 2.75rem;
-        margin: 0rem;
-        opacity: 0.7;
-        transition: opacity 0.3s ease;
-    }
-
-    .tab-button:hover {
-        opacity: 1;
-    }
-
-    .tab-button.tab-active {
-        opacity: 1;
-        text-decoration: underline;
     }
 
     #preview {

@@ -117,3 +117,174 @@
         <p><Reference n={2} kind="back" /><a href="https://urbanjost.github.io/M_ncurses/images/example.gif" data-preview="true">ncurses (click to preview)</a></p>
     </Panel>
 </main>
+
+<style>
+    .badge-aws {
+        color: var(--aws-badge-color);
+    }
+
+    .html5 {
+        color: light-dark(oklch(40.37% 0.1544 60.71), oklch(76.85% 0.1926 60.71));
+    }
+
+    .css3 {
+        color: light-dark(oklch(37.87% 0.1454 255.71), oklch(73.7% 0.1548 241.47));
+    }
+
+    .es6 {
+        color: light-dark(oklch(40.56% 0.1322 93.37), oklch(87.09% 0.1817 93.37));
+    }
+
+    #about-container {
+        display: flex;
+        gap: 1rem;
+        position: relative;
+        align-items: stretch;
+    }
+
+    #about-icon-container {
+        flex: 0 0 30%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-right: 1.25rem;
+    }
+
+    #about-container::after {
+        content: '';
+        position: absolute;
+        left: 30%;
+        top: 0;
+        bottom: 0;
+        width: 0.125rem;
+        background-color: var(--border-color);
+    }
+
+    #about-icon {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 0.5rem;
+        filter: grayscale(100%);
+        transition: filter 0.3s ease;
+        border: 0.0625rem solid var(--text-color);
+    }
+
+    #about-icon:hover {
+        filter: grayscale(0%);
+    }
+
+    #about-text {
+        flex: 1;
+        padding-left: 0.5rem;
+    }
+
+    .panels-container {
+        margin-top: var(--nav-height);
+        position: relative;
+        z-index: 0;
+        height: calc(100vh - var(--nav-height));
+        height: calc(100dvh - var(--nav-height));
+        overflow: hidden;
+        padding: 1.25rem;
+        box-sizing: border-box;
+    }
+
+    .panels-container::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-color: var(--bg-color);
+        opacity: calc(1 - var(--bg-opacity));
+        z-index: -1;
+        pointer-events: none;
+    }
+
+    .terminal-tabs {
+        margin: -0.4rem 0;
+    }
+
+    .terminal-tab {
+        display: none;
+        height: 100%;
+        width: 100%;
+    }
+
+    .terminal-tab.tab-active {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .terminal-tab > * {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+    }
+
+    .tab-button {
+        background: none;
+        border: none;
+        color: var(--bg-color);
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+        transition: opacity 0.3s ease;
+    }
+
+    .tab-button:hover,
+    .tab-button.tab-active {
+        text-decoration: underline;
+    }
+
+    .tab-button.tab-active {
+        opacity: 1;
+    }
+
+    @media (max-width: 31.25rem) {
+        .panels-container {
+            height: auto;
+            min-height: calc(100vh - var(--nav-height));
+            min-height: calc(100dvh - var(--nav-height));
+            padding: 1rem;
+        }
+
+        #about-container {
+            flex-direction: column;
+        }
+
+        #about-icon-container {
+            flex: 0 0 auto;
+            padding-right: 0;
+            padding-bottom: 1.25rem;
+            border-bottom: 0.125rem solid var(--border-color);
+        }
+
+        #about-container::after {
+            display: none;
+        }
+
+        #about-text {
+            padding-left: 0;
+        }
+
+        .terminal-tabs {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-button {
+            display: flex;
+            align-items: center;
+            color: var(--text-color);
+            padding: 0 0.5rem;
+            min-height: 2.75rem;
+            margin: 0;
+            opacity: 0.7;
+        }
+
+        .tab-button:hover,
+        .tab-button.tab-active {
+            opacity: 1;
+        }
+    }
+</style>
