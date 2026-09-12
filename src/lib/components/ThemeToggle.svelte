@@ -1,12 +1,35 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { initThemeToggle } from '$lib/theme';
 
-    let toggle: HTMLButtonElement;
-    onMount(() => initThemeToggle(toggle));
+    type ColorScheme = 'dark' | 'light';
+    const storageKey = 'portfolio-color-scheme';
+    let scheme = $state<ColorScheme>('light');
+
+    onMount(() => {
+        scheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    });
+
+    function toggleTheme() {
+        scheme = scheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.style.colorScheme = scheme;
+        document.documentElement.dataset.theme = scheme;
+        document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!.content =
+            scheme === 'dark' ? '#232323' : '#eeeeee';
+        try {
+            localStorage.setItem(storageKey, scheme);
+        } catch (error) {
+            console.warn('Theme preference could not be saved.', error);
+        }
+    }
 </script>
 
-<button bind:this={toggle} id="toggle-theme" type="button" aria-label="Toggle color theme" aria-pressed="false">
+<button
+    id="toggle-theme"
+    type="button"
+    aria-label={`Switch to ${scheme === 'dark' ? 'light' : 'dark'} theme`}
+    aria-pressed={scheme === 'dark'}
+    onclick={toggleTheme}
+>
     <span class="theme-label" aria-hidden="true">◐</span>
 </button>
 

@@ -273,10 +273,6 @@ abbr[title] {
     user-select: text;
 }
 
-.panel:not(.active) .cursor {
-    display: none;
-}
-
 .active .terminal-window {
     border: 0.125rem solid var(--text-color);
     box-shadow: 0.5rem 0.5rem 0 var(--shadow-color);
@@ -373,20 +369,6 @@ sup.highlight {
 
 #refs sup {
     margin-right: 0.5rem;
-}
-
-/* links */
-.terminal-content a.highlight {
-    background-color: var(--link-color);
-    color: var(--bg-color);
-    padding: 0 0.25rem;
-    border-radius: 0.125rem;
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.terminal-content a.highlight:hover {
-    color: var(--bg-color);
-    opacity: 0.9;
 }
 
 /* image preview styles */

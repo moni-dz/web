@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 
 import { boundPanelPosition, initWindowManager } from '../src/lib/window-manager.ts';
-import { getPreferredTheme } from '../src/lib/theme.ts';
 import { formatPostDate, getTagColorIndex } from '../src/lib/markdown.ts';
 
 test('post dates accept YAML timestamps and tag colors stay stable', () => {
@@ -25,7 +24,6 @@ type PositionCase = {
 
 test('browser entry points import under Node without touching the DOM', () => {
     expect(typeof initWindowManager).toBe('function');
-    expect(typeof getPreferredTheme).toBe('function');
 });
 
 test('boundPanelPosition clamps both axes and preserves its stable target', () => {

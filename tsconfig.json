@@ -11,10 +11,7 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler",
-		"types": [
-			"node",
-			"./src/worker-configuration.d.ts"
-		]
+		"types": ["node"]
 	},
 	"include": ["src/**/*.ts", "src/**/*.svelte", "vite.config.ts"]
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias

@@ -22,7 +22,12 @@
         <p>
             start by navigating to the other windows using the links above.
 
-            <DeviceMessage panel="welcome" n={1} />
+            <DeviceMessage
+                panel="welcome"
+                n={1}
+                desktop="on desktop or tablets you may click or touch the windows to bring them into focus. you may also drag the active window around by dragging its title bar. toggle the theme by clicking the button on the top right."
+                mobile="on mobile, scroll down to browse each window. toggle the theme by tapping the button at the end of the navigation links."
+            />
 
             this site is best viewed in a modern up-to-date browser as it uses <code><a href="https://web.dev/baseline">baseline</a> <a href="https://web.dev/baseline/2023">2023</a> and <a href="https://web.dev/baseline/2024">2024</a> features such as <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/oklch">oklch()</a><Reference n={1} kind="ref" /></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark">light-dark()</a></code>, <code><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame">requestAnimationFrame()</a></code>, and the <a href="https://web.dev/blog/popover-api">Popover API</a>.
         </p>
@@ -44,14 +49,19 @@
 
                 while web programming is <strong>not my main focus</strong>, this site aims to showcase my progress in the course.
 
-                <DeviceMessage panel="about" n={1} />
+                <DeviceMessage
+                    panel="about"
+                    n={1}
+                    desktop="try clicking or using the arrow keys to switch between tabs."
+                    mobile="try clicking the tabs or swiping left or right on this window to switch between them."
+                />
             </p>
         </div>
         <div class="terminal-tab" id="about-author" role="tabpanel" aria-labelledby="about-author-tab" hidden>
             <div id="about-container">
                 <aside id="about-icon-container">
                     <img id="about-icon" src="/assets/icon.webp" alt="Portrait of Lythe Marvin Lacre" width="320" height="320">
-                    <strong><DeviceMessage panel="about" n={2} /></strong>
+                    <strong><DeviceMessage panel="about" n={2} desktop="hover the image..." mobile="touch the image..." /></strong>
                     <abbr title="you should hover every element like me.">also hover me...</abbr>
                 </aside>
                 <section id="about-text">

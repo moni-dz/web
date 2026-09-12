@@ -64,7 +64,6 @@ export function initWindowManager() {
     ].join('; ');
 
     const selectors = {
-        deviceMessage: '.device-specific-message',
         nav: 'nav',
         navLink: 'nav a[data-panel]',
         panel: '.panel',
@@ -233,7 +232,6 @@ export function initWindowManager() {
             resetPanelPositions();
         }
 
-        setDeviceMessages();
         refreshLayoutMeasurements();
     }
 
@@ -861,48 +859,6 @@ export function initWindowManager() {
         buttons[nextIndex].click();
     }
 
-    /**
-     * Chooses the text inserted into a device-specific message placeholder.
-     *
-     * @param elementId Placeholder ID in the form "panel-message-number".
-     */
-    function getDeviceMessage(elementId: string) {
-        const [panelId, messageNumber] = elementId.split('-message-');
-        const messages = state.isMobile ? mobileMessages : desktopMessages;
-
-        return messages[panelId as keyof typeof messages]?.[messageNumber as "1"] ?? '';
-    }
-
-    const mobileMessages = {
-        about: {
-            1: 'try clicking the tabs or swiping left or right on this window to switch ' +
-                'between them.',
-            2: 'touch the image...',
-        },
-        welcome: {
-            1: `on mobile, scroll down to browse each window.
-            toggle the theme by tapping the button at the end of the navigation links.`,
-        },
-    };
-
-    const desktopMessages = {
-        about: {
-            1: 'try clicking or using the arrow keys to switch between tabs.',
-            2: 'hover the image...',
-        },
-        welcome: {
-            1: `on desktop or tablets you may click or touch the windows to bring them into focus.
-            you may also drag the active window around by dragging its title bar.
-            toggle the theme by clicking the button on the top right.`,
-        },
-    };
-
-    function setDeviceMessages() {
-        for (const message of queryAll(selectors.deviceMessage)) {
-            message.textContent = getDeviceMessage(message.id);
-        }
-    }
-
     function bindDesktopPanelFocus() {
         for (const panel of getInteractivePanels()) {
             on(panel, 'pointerdown', (event) => {
@@ -1063,7 +1019,6 @@ export function initWindowManager() {
         bindPreviewLinks();
         bindReferenceLinks();
         bindTabs();
-        setDeviceMessages();
         bindSwipes();
         bindMobileTooltips();
         bindDesktopPanelFocus();

@@ -11,8 +11,10 @@ async function activatePanel(page: Page, panelId: string) {
     await expect(page.locator(`#${panelId}`)).toHaveClass(/active/);
 }
 
-async function waitForMode(page: Page, expectedText: string) {
-    await expect(page.locator('#welcome-message-1')).toContainText(expectedText);
+async function waitForMode(page: Page, mode: 'desktop' | 'mobile') {
+    await expect(page.locator(`#welcome-message-1 .${mode}-message`)).toBeVisible();
+    await expect(page.locator(`#welcome-message-1 .${mode === 'desktop' ? 'mobile' : 'desktop'}-message`)).toBeHidden();
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 }
 
 async function getElementCenter(page: Page, selector: string) {
@@ -34,10 +36,10 @@ async function holdDrag(page: Page) {
 
 test('a live page switches desktop to mobile and back to desktop', async ({ page }) => {
     await openPage(page, 1_280, 800);
-    await waitForMode(page, 'on desktop or tablets');
+    await waitForMode(page, 'desktop');
 
     await page.setViewportSize({ width: 375, height: 800 });
-    await waitForMode(page, 'on mobile');
+    await waitForMode(page, 'mobile');
 
     // Synthetic touch payloads isolate the lifecycle assertion from Playwright's own touch
     // emulation while still exercising the listeners installed in the real browser document.
@@ -54,7 +56,7 @@ test('a live page switches desktop to mobile and back to desktop', async ({ page
     expect(selectedTab).toBe('about-author');
 
     await page.setViewportSize({ width: 1_280, height: 800 });
-    await waitForMode(page, 'on desktop or tablets');
+    await waitForMode(page, 'desktop');
 
     // Direct dispatch avoids panel overlap deciding which element receives the pointer event.
     // The event still crosses the browser's real DOM listener boundary between responsive modes.
@@ -120,7 +122,7 @@ test('resize reclamps a dragged panel and mobile clears drag styles', async ({ p
     });
 
     await page.setViewportSize({ width: 375, height: 800 });
-    await waitForMode(page, 'on mobile');
+    await waitForMode(page, 'mobile');
 
     expect(await page.evaluate(() => {
         const properties = ['height', 'left', 'position', 'top', 'transform', 'width'] as const;
@@ -266,7 +268,7 @@ test('blog post reload always lands scrolled to the title', async ({ page }) => 
 
 test('mobile navigation uses document coordinates after scrolling', async ({ page }) => {
     await openPage(page, 375, 800);
-    await waitForMode(page, 'on mobile');
+    await waitForMode(page, 'mobile');
     await activatePanel(page, 'projects');
 
     await page.waitForFunction(() => {
@@ -293,7 +295,7 @@ test('mobile navigation uses document coordinates after scrolling', async ({ pag
 
 test('mobile accordion opens one panel at a time and collapses on repeat tap', async ({ page }) => {
     await openPage(page, 375, 800);
-    await waitForMode(page, 'on mobile');
+    await waitForMode(page, 'mobile');
 
     await page.locator('#projects .panel-toggle').click();
     await expect(page.locator('#projects')).toHaveClass(/active/);
