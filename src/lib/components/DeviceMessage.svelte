@@ -1,5 +1,10 @@
 <script lang="ts">
-    let { panel, n, desktop, mobile }: {
+    let {
+        panel,
+        n,
+        desktop,
+        mobile,
+    }: {
         panel: string;
         n: number;
         desktop: string;
@@ -7,20 +12,8 @@
     } = $props();
 </script>
 
-<span class="device-specific-message" id="{panel}-message-{n}"><span class="desktop-message">{desktop}</span><span class="mobile-message">{mobile}</span></span>
-
-<style>
-    .mobile-message {
-        display: none;
-    }
-
-    @media (max-width: 31.25rem) {
-        .desktop-message {
-            display: none;
-        }
-
-        .mobile-message {
-            display: inline;
-        }
-    }
-</style>
+<span class="device-specific-message" id="{panel}-message-{n}"
+    ><span class="desktop-message max-sm:hidden">{desktop}</span><span class="mobile-message hidden max-sm:inline"
+        >{mobile}</span
+    ></span
+>

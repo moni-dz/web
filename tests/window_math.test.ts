@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { boundPanelPosition, initWindowManager } from '../src/lib/window-manager.ts';
-import { formatPostDate, getTagColorIndex } from '../src/lib/markdown.ts';
+import { formatPostDate, getTagColorIndex, TAG_COLOR_COUNT } from '../src/lib/markdown.ts';
 
 test('post dates accept YAML timestamps and tag colors stay stable', () => {
     expect(formatPostDate('2026-07-12')).toBe('July 12, 2026');
@@ -9,7 +9,7 @@ test('post dates accept YAML timestamps and tag colors stay stable', () => {
     for (const tag of ['javascript', 'markdown', 'web']) {
         expect(getTagColorIndex(tag)).toBe(getTagColorIndex(tag.toUpperCase()));
         expect(getTagColorIndex(tag)).toBeGreaterThanOrEqual(0);
-        expect(getTagColorIndex(tag)).toBeLessThan(5);
+        expect(getTagColorIndex(tag)).toBeLessThan(TAG_COLOR_COUNT);
     }
 });
 
@@ -38,12 +38,7 @@ test('boundPanelPosition clamps both axes and preserves its stable target', () =
 
     for (const test_case of cases) {
         const target = { x: 777, y: 777 };
-        const result = boundPanelPosition(
-            target,
-            test_case.x,
-            test_case.y,
-            bounds,
-        );
+        const result = boundPanelPosition(target, test_case.x, test_case.y, bounds);
 
         // Identity matters because allocating a new point for every pointer frame creates avoidable
         // garbage-collector pressure in the drag hot path.

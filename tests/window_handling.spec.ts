@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { THEME_COLORS } from '../src/lib/theme.ts';
 
 async function openPage(page: Page, width: number, height: number) {
     await page.setViewportSize({ width, height });
@@ -43,7 +44,7 @@ test('a live page switches desktop to mobile and back to desktop', async ({ page
 
     // Synthetic touch payloads isolate the lifecycle assertion from Playwright's own touch
     // emulation while still exercising the listeners installed in the real browser document.
-    const selectedTab = await page.evaluate(() => {
+    await page.evaluate(() => {
         const panel = document.querySelector('#about')!;
         const start = new Event('touchstart', { bubbles: true, cancelable: true });
         Object.defineProperty(start, 'touches', { value: [{ clientX: 300 }] });
@@ -51,9 +52,8 @@ test('a live page switches desktop to mobile and back to desktop', async ({ page
         const end = new Event('touchend', { bubbles: true, cancelable: true });
         Object.defineProperty(end, 'changedTouches', { value: [{ clientX: 80 }] });
         panel.dispatchEvent(end);
-        return panel.querySelector('.terminal-tab.tab-active')!.id;
     });
-    expect(selectedTab).toBe('about-author');
+    await expect(page.locator('#about .terminal-tab.tab-active')).toHaveId('about-author');
 
     await page.setViewportSize({ width: 1_280, height: 800 });
     await waitForMode(page, 'desktop');
@@ -62,12 +62,14 @@ test('a live page switches desktop to mobile and back to desktop', async ({ page
     // The event still crosses the browser's real DOM listener boundary between responsive modes.
     await page.evaluate(() => {
         const content = document.querySelector('#projects .terminal-content')!;
-        content.dispatchEvent(new PointerEvent('pointerdown', {
-            bubbles: true,
-            button: 0,
-            isPrimary: true,
-            pointerId: 17,
-        }));
+        content.dispatchEvent(
+            new PointerEvent('pointerdown', {
+                bubbles: true,
+                button: 0,
+                isPrimary: true,
+                pointerId: 17,
+            }),
+        );
     });
     await expect(page.locator('#projects')).toHaveClass(/active/);
 });
@@ -96,14 +98,20 @@ test('resize reclamps a dragged panel and mobile clears drag styles', async ({ p
     await page.mouse.up();
 
     await expect(page.locator('#about')).toHaveCSS('position', 'absolute');
-    expect(await page.evaluate(() => {
-        const panel = document.querySelector('#about')!.getBoundingClientRect();
-        const container = document.querySelector('.panels-container')!.getBoundingClientRect();
-        // A 1px epsilon absorbs sub-pixel getBoundingClientRect() rounding differences between
-        // engines (WebKit rounds fractional layout values differently from Chromium/Firefox).
-        return panel.left >= container.left - 1 && panel.top >= container.top - 1 &&
-            panel.right <= container.right + 1 && panel.bottom <= container.bottom + 1;
-    })).toBe(true);
+    expect(
+        await page.evaluate(() => {
+            const panel = document.querySelector('#about')!.getBoundingClientRect();
+            const container = document.querySelector('.panels-container')!.getBoundingClientRect();
+            // A 1px epsilon absorbs sub-pixel getBoundingClientRect() rounding differences between
+            // engines (WebKit rounds fractional layout values differently from Chromium/Firefox).
+            return (
+                panel.left >= container.left - 1 &&
+                panel.top >= container.top - 1 &&
+                panel.right <= container.right + 1 &&
+                panel.bottom <= container.bottom + 1
+            );
+        }),
+    ).toBe(true);
 
     // Resize while the moved panel is inactive, then reactivate it. This catches stale inline
     // widths that otherwise override the responsive 75% active-panel rule.
@@ -117,19 +125,26 @@ test('resize reclamps a dragged panel and mobile clears drag styles', async ({ p
         const maxWidth = Number.parseFloat(getComputedStyle(document.querySelector('#about')!).maxWidth);
         const expectedWidth = Math.min(container.width * 0.75, maxWidth);
         const expanded = panel.width >= expectedWidth - 1;
-        return expanded && panel.left >= container.left - 1 && panel.top >= container.top - 1 &&
-            panel.right <= container.right + 1 && panel.bottom <= container.bottom + 1;
+        return (
+            expanded &&
+            panel.left >= container.left - 1 &&
+            panel.top >= container.top - 1 &&
+            panel.right <= container.right + 1 &&
+            panel.bottom <= container.bottom + 1
+        );
     });
 
     await page.setViewportSize({ width: 375, height: 800 });
     await waitForMode(page, 'mobile');
 
-    expect(await page.evaluate(() => {
-        const properties = ['height', 'left', 'position', 'top', 'transform', 'width'] as const;
-        return [...document.querySelectorAll('.panel:not(#preview)')].every((panel) => {
-            return properties.every((property) => (panel as HTMLElement).style[property] === '');
-        });
-    })).toBe(true);
+    expect(
+        await page.evaluate(() => {
+            const properties = ['height', 'left', 'position', 'top', 'transform', 'width'] as const;
+            return [...document.querySelectorAll('.panel:not(#preview)')].every((panel) => {
+                return properties.every((property) => (panel as HTMLElement).style[property] === '');
+            });
+        }),
+    ).toBe(true);
 });
 
 test('web previews are isolated and unsupported popovers navigate normally', async ({ page }) => {
@@ -166,7 +181,9 @@ test('web previews are isolated and unsupported popovers navigate normally', asy
     const failureState = await page.evaluate(() => {
         Object.defineProperty(HTMLElement.prototype, 'showPopover', {
             configurable: true,
-            value: () => { throw new Error('Synthetic opening failure.'); },
+            value: () => {
+                throw new Error('Synthetic opening failure.');
+            },
         });
         const link = document.querySelector<HTMLAnchorElement>('#skills a[href*="Philips_PM5544"]')!;
         link.href = '#skills';
@@ -222,7 +239,7 @@ test('theme and window manager survive blog navigation and reload', async ({ pag
     });
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
         'content',
-        theme === 'dark' ? '#232323' : '#eeeeee',
+        THEME_COLORS[theme as 'dark' | 'light'],
     );
 
     await page.locator('nav a[href="/blog"]').click();
@@ -248,7 +265,7 @@ test('theme and window manager survive blog navigation and reload', async ({ pag
     expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
         'content',
-        theme === 'dark' ? '#232323' : '#eeeeee',
+        THEME_COLORS[theme as 'dark' | 'light'],
     );
 });
 
@@ -257,9 +274,10 @@ test('blog post reload always lands scrolled to the title', async ({ page }) => 
     await page.goto('/blog/ghp-to-cfw');
     await expect(page.locator('.blog-post-title')).toBeVisible();
 
-    await page.locator('.blog-page-content').evaluate((el) => { el.scrollTop = 400; });
-    await expect.poll(() => page.locator('.blog-page-content').evaluate((el) => el.scrollTop))
-        .toBeGreaterThan(0);
+    await page.locator('.blog-page-content').evaluate((el) => {
+        el.scrollTop = 400;
+    });
+    await expect.poll(() => page.locator('.blog-page-content').evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 
     await page.reload();
     await expect(page.locator('.blog-post-title')).toBeVisible();
@@ -269,7 +287,9 @@ test('blog post reload always lands scrolled to the title', async ({ page }) => 
 test('mobile navigation uses document coordinates after scrolling', async ({ page }) => {
     await openPage(page, 375, 800);
     await waitForMode(page, 'mobile');
-    await activatePanel(page, 'projects');
+    // Panel links are hidden on mobile, so the click is dispatched directly.
+    await page.locator('nav a[data-panel="projects"]').dispatchEvent('click');
+    await expect(page.locator('#projects')).toHaveClass(/active/);
 
     await page.waitForFunction(() => {
         const panel = document.querySelector('#projects')!.getBoundingClientRect();
@@ -283,7 +303,9 @@ test('mobile navigation uses document coordinates after scrolling', async ({ pag
             (window as any).requestedScrollTop = options.top;
         };
         const panel = document.querySelector('#projects')!;
-        (window as any).expectedScrollTop = panel.getBoundingClientRect().top + window.scrollY -
+        (window as any).expectedScrollTop =
+            panel.getBoundingClientRect().top +
+            window.scrollY -
             (document.querySelector('nav') as HTMLElement).offsetHeight;
         document.querySelector<HTMLElement>('nav a[data-panel="projects"]')!.click();
     });
@@ -293,26 +315,33 @@ test('mobile navigation uses document coordinates after scrolling', async ({ pag
     expect(requested).toBe(expected);
 });
 
-test('mobile accordion opens one panel at a time and collapses on repeat tap', async ({ page }) => {
-    await openPage(page, 375, 800);
-    await waitForMode(page, 'mobile');
+test('about tabs switch on click while the about window is active', async ({ page }) => {
+    await openPage(page, 1_280, 800);
+    await activatePanel(page, 'about');
 
-    await page.locator('#projects .panel-toggle').click();
-    await expect(page.locator('#projects')).toHaveClass(/active/);
+    // A press on the title bar arms a drag. It must not swallow the click meant for a tab.
+    await page.locator('#about-author-tab').click();
+    await expect(page.locator('#about-author-tab')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#about-author')).toBeVisible();
+    await expect(page.locator('#about-site')).toBeHidden();
 
-    const stateAfterOpen = await page.evaluate(() => ({
-        activeCount: document.querySelectorAll('.panel.active').length,
-        projectsExpanded: document.querySelector('#projects .panel-toggle')!.getAttribute('aria-expanded'),
-        welcomeActive: document.querySelector('#welcome')!.classList.contains('active'),
-        welcomeExpanded: document.querySelector('#welcome .panel-toggle')!.getAttribute('aria-expanded'),
-    }));
+    await page.locator('#about-author-tab').press('ArrowRight');
+    await expect(page.locator('#about-certifications-tab')).toBeFocused();
+    await expect(page.locator('#about-certifications')).toBeVisible();
+});
 
-    expect(stateAfterOpen.activeCount).toBe(1);
-    expect(stateAfterOpen.projectsExpanded).toBe('true');
-    expect(stateAfterOpen.welcomeActive).toBe(false);
-    expect(stateAfterOpen.welcomeExpanded).toBe('false');
+test('panel title buttons raise their window from the keyboard', async ({ page }) => {
+    await openPage(page, 1_280, 800);
 
-    await page.locator('#projects .panel-toggle').click();
-    await expect(page.locator('.panel.active')).toHaveCount(0);
-    await expect(page.locator('#projects .panel-toggle')).toHaveAttribute('aria-expanded', 'false');
+    await page.locator('#refs .panel-toggle').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#refs')).toHaveClass(/active/);
+    await expect(page.locator('nav a[data-panel="refs"]')).toHaveAttribute('aria-current', 'page');
+
+    const refsIsTopmost = await page.evaluate(() => {
+        const zIndex = (element: Element) => Number.parseInt(getComputedStyle(element).zIndex, 10) || 0;
+        const refs = zIndex(document.querySelector('#refs')!);
+        return [...document.querySelectorAll('.panel:not(#refs)')].every((panel) => zIndex(panel) < refs);
+    });
+    expect(refsIsTopmost).toBe(true);
 });

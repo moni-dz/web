@@ -1,5 +1,11 @@
+import { flushSync } from 'svelte';
+import type { PanelState } from '$lib/panels.svelte';
+
 type Position = { x: number; y: number };
 type PanelBounds = { minX: number; minY: number; maxX: number; maxY: number };
+
+/** Matches UnoCSS's `max-sm:` variant (see uno.config.ts). */
+export const MOBILE_QUERY = '(width < 31.25rem)';
 
 /** Restricts a number to an inclusive range. */
 function clamp(value: number, min: number, max: number) {
@@ -18,12 +24,16 @@ export function boundPanelPosition(target: Position, x: number, y: number, bound
     return target;
 }
 
-export function initWindowManager() {
+export function initWindowManager(panels: PanelState) {
     const controller = new AbortController();
     const timeouts = new Set<number>();
     type Events = GlobalEventHandlersEventMap & WindowEventMap & MediaQueryListEventMap;
-    function on<K extends keyof Events>(target: EventTarget, type: K,
-        listener: (event: Events[K]) => void, options: AddEventListenerOptions = {}) {
+    function on<K extends keyof Events>(
+        target: EventTarget,
+        type: K,
+        listener: (event: Events[K]) => void,
+        options: AddEventListenerOptions = {},
+    ) {
         target.addEventListener(type, listener as EventListener, { ...options, signal: controller.signal });
     }
     function later(callback: () => void, delay: number) {
@@ -39,11 +49,11 @@ export function initWindowManager() {
         timeouts.delete(id);
     }
 
-    const MOBILE_QUERY = '(max-width: 31.25rem)';
     const RESIZE_DEBOUNCE_MS = 100;
     const HIGHLIGHT_MS = 2000;
     const TOOLTIP_DISMISS_MS = 3000;
-    const SWIPE_THRESHOLD_PX = 50;
+    /** Pointer travel before a press on a title bar becomes a drag, so clicks still reach its buttons. */
+    const DRAG_THRESHOLD_PX = 4;
     const IMAGE_FILE_PATTERN = /\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
     const PREVIEW_PERMISSIONS_POLICY = [
         "autoplay 'none'",
@@ -65,26 +75,22 @@ export function initWindowManager() {
 
     const selectors = {
         nav: 'nav',
-        navLink: 'nav a[data-panel]',
         panel: '.panel',
-        panelToggle: '.panel-toggle',
         panelsContainer: '.panels-container',
         previewContainer: '.preview-container',
         previewHeading: '.preview-heading',
         previewLink: 'a[data-preview="true"]',
-        tab: '.terminal-tab',
-        tabButton: '.tab-button',
-        tabGroup: '.terminal-tabs',
         terminalHeader: '.terminal-header',
-        terminalWindow: '.terminal-window',
     };
 
     const state = {
+        container: null as HTMLElement | null,
         containerRect: null as DOMRect | null,
         drag: {
             captureTarget: null as HTMLElement | null,
             frame: 0,
             isActive: false,
+            isPending: false,
             panel: null as HTMLElement | null,
             pointerId: null as number | null,
             pointerX: 0,
@@ -101,6 +107,7 @@ export function initWindowManager() {
         panelPositions: new Map<HTMLElement, Position>(),
         previewPanel: null as HTMLDivElement | null,
         previewSourcePanel: null as HTMLElement | null,
+        reducedMotionQuery: window.matchMedia('(prefers-reduced-motion: reduce)'),
         resizeTimeout: 0,
         tooltipDismissers: [] as (() => void)[],
         zIndexMax: 0,
@@ -137,6 +144,14 @@ export function initWindowManager() {
         return getPanels().filter((panel) => panel.id !== 'preview');
     }
 
+    function isActive(panel: HTMLElement) {
+        return panels.active === panel.id;
+    }
+
+    function scrollBehavior(): ScrollBehavior {
+        return state.reducedMotionQuery.matches ? 'auto' : 'smooth';
+    }
+
     /** Reads a panel's stacking order from either its inline style or the stylesheet. */
     function getPanelZIndex(panel: HTMLElement) {
         const styleValue = panel.style.zIndex || getComputedStyle(panel).zIndex;
@@ -151,26 +166,28 @@ export function initWindowManager() {
         }, 0);
     }
 
-    /** Calculates the coordinates a panel may occupy without leaving the visible panel area. */
+    /**
+     * Calculates the coordinates a panel may occupy without leaving the visible part of the
+     * panels container. Coordinates are relative to the container's scrolled content, so the
+     * visible region moves with the container's scroll offset.
+     */
     function getPanelBounds(panel: HTMLElement) {
-        const panelRect = panel.getBoundingClientRect();
-        const containerRect = state.containerRect!;
+        const container = state.container!;
+        const minX = container.scrollLeft;
+        const minY = container.scrollTop;
 
-        // Dragging writes transforms relative to the panels container. Keeping bounds in the same
-        // coordinate system avoids subtle offsets when the fixed nav changes height on mobile.
         return {
-            maxX: Math.max(0, containerRect.width - panelRect.width),
-            maxY: Math.max(0, containerRect.height - panelRect.height),
-            minX: 0,
-            minY: 0,
+            maxX: Math.max(minX, minX + container.clientWidth - panel.offsetWidth),
+            maxY: Math.max(minY, minY + container.clientHeight - panel.offsetHeight),
+            minX,
+            minY,
         };
     }
 
     function refreshLayoutMeasurements() {
-        const container = queryRequired(selectors.panelsContainer);
         const nav = queryRequired(selectors.nav);
 
-        state.containerRect = container.getBoundingClientRect();
+        state.containerRect = state.container!.getBoundingClientRect();
         state.navHeight = nav.offsetHeight;
         state.panelBounds.clear();
 
@@ -200,7 +217,7 @@ export function initWindowManager() {
 
     function bindLayoutMeasurements() {
         state.mobileQuery = window.matchMedia(MOBILE_QUERY);
-        state.isMobile = state.mobileQuery!.matches;
+        state.isMobile = state.mobileQuery.matches;
         refreshLayoutMeasurements();
 
         on(state.mobileQuery, 'change', updateResponsiveMode);
@@ -213,6 +230,30 @@ export function initWindowManager() {
                 refreshLayoutMeasurements();
             }, RESIZE_DEBOUNCE_MS);
         });
+    }
+
+    /**
+     * Re-clamps a moved panel whenever its size changes: active/inactive width transitions, tab
+     * switches, and opening a `<details>` all resize panels without resizing the window.
+     */
+    function bindPanelResizes() {
+        const observer = new ResizeObserver((entries) => {
+            if (state.isMobile) return;
+
+            for (const entry of entries) {
+                const panel = entry.target as HTMLElement;
+                if (panel === state.drag.panel) continue;
+                if (!state.panelPositions.has(panel)) continue;
+
+                refreshPanelMeasurements(panel);
+            }
+        });
+
+        for (const panel of getInteractivePanels()) {
+            observer.observe(panel);
+        }
+
+        controller.signal.addEventListener('abort', () => observer.disconnect());
     }
 
     /** Switches the interaction model when the CSS breakpoint changes. */
@@ -235,18 +276,13 @@ export function initWindowManager() {
         refreshLayoutMeasurements();
     }
 
+    /**
+     * Marks one panel active. The DOM update is flushed immediately because callers measure the
+     * panel's new active width right afterwards.
+     */
     function setActivePanel(panel: HTMLElement) {
-        for (const candidate of getPanels()) {
-            const isActive = candidate === panel;
-            candidate.classList.toggle('active', isActive);
-
-            const toggle = candidate.querySelector<HTMLButtonElement>(selectors.panelToggle);
-            toggle?.setAttribute('aria-expanded', String(isActive));
-        }
-
-        if (panel.id && panel.id !== 'preview') {
-            updateNavLinks(panel.id);
-        }
+        panels.active = panel.id;
+        flushSync();
     }
 
     function focusPanel(panel: HTMLElement | null) {
@@ -258,7 +294,7 @@ export function initWindowManager() {
             return;
         }
 
-        if (!panel.classList.contains('active')) {
+        if (!isActive(panel)) {
             setActivePanel(panel);
         }
 
@@ -272,38 +308,9 @@ export function initWindowManager() {
         // window.scrollTo takes a document coordinate, not a container-relative offset.
         const top = panel.getBoundingClientRect().top + window.scrollY - state.navHeight;
         window.scrollTo({
-            behavior: 'smooth',
+            behavior: scrollBehavior(),
             top,
         });
-    }
-
-    function updateNavLinks(activeId: string) {
-        for (const link of queryAll(selectors.navLink)) {
-            const isActive = link.dataset.panel === activeId;
-
-            link.classList.toggle('active-link', isActive);
-
-            if (isActive) {
-                link.setAttribute('aria-current', 'page');
-            } else {
-                link.removeAttribute('aria-current');
-            }
-        }
-    }
-
-    function bindNavLinks() {
-        for (const link of queryAll(selectors.navLink)) {
-            on(link, 'click', (event) => {
-                event.preventDefault();
-
-                const targetId = link.dataset.panel!;
-                const targetPanel = document.getElementById(targetId);
-                if (!targetPanel) return;
-
-                focusPanel(targetPanel);
-                window.history.replaceState(null, '', `#${targetId}`);
-            });
-        }
     }
 
     function bindReferenceLinks() {
@@ -350,7 +357,7 @@ export function initWindowManager() {
         if (state.isMobile && highlightElement) {
             later(() => {
                 highlightElement.scrollIntoView({
-                    behavior: 'smooth',
+                    behavior: scrollBehavior(),
                     block: 'center',
                 });
             }, RESIZE_DEBOUNCE_MS);
@@ -401,14 +408,16 @@ export function initWindowManager() {
     }
 
     /**
-     * Starts dragging an active panel from its title bar.
+     * Arms a drag when an active panel's title bar is pressed.
      *
-     * Pointer events cover mouse, pen, and touch with one shared code path.
+     * The drag itself starts only once the pointer moves past DRAG_THRESHOLD_PX. Capturing the
+     * pointer on press would retarget the following click to the title bar, so its buttons (the
+     * panel title and the about tabs) would never receive it.
      */
     function startDrag(event: PointerEvent) {
         if (state.isMobile || event.button !== 0) return;
         if (!event.isPrimary) return;
-        if (state.drag.isActive) return;
+        if (state.drag.isActive || state.drag.isPending) return;
         if (!(event.target instanceof Element)) return;
 
         const panel = event.target.closest<HTMLElement>(selectors.panel);
@@ -418,12 +427,26 @@ export function initWindowManager() {
         if (!header) return;
         if (panel.id === 'preview') return;
 
-        if (!panel.classList.contains('active')) {
+        if (!isActive(panel)) {
             focusPanel(panel);
             return;
         }
 
-        const container = queryRequired(selectors.panelsContainer);
+        state.drag.captureTarget = header;
+        state.drag.isPending = true;
+        state.drag.panel = panel;
+        state.drag.pointerId = event.pointerId;
+        state.drag.pointerX = event.clientX;
+        state.drag.pointerY = event.clientY;
+        state.drag.startX = event.clientX;
+        state.drag.startY = event.clientY;
+    }
+
+    /** Freezes the panel's box and captures the pointer once a press becomes a real drag. */
+    function beginDrag() {
+        const panel = state.drag.panel!;
+        const header = state.drag.captureTarget!;
+        const container = state.container!;
         const panelRect = panel.getBoundingClientRect();
 
         // The resize debounce may still be pending when a user immediately begins a new drag.
@@ -435,30 +458,30 @@ export function initWindowManager() {
         panel.style.height = `${panelRect.height}px`;
         panel.style.width = `${panelRect.width}px`;
         state.panelBounds.set(panel, getPanelBounds(panel));
-        state.drag.captureTarget = header;
+        state.drag.isPending = false;
         state.drag.isActive = true;
-        state.drag.panel = panel;
-        state.drag.pointerId = event.pointerId;
-        state.drag.pointerX = event.clientX;
-        state.drag.pointerY = event.clientY;
-        state.drag.startX = event.clientX;
-        state.drag.startY = event.clientY;
-        state.drag.startPanelX = panelRect.left - state.containerRect.left;
-        state.drag.startPanelY = panelRect.top - state.containerRect.top;
+        state.drag.startPanelX = panelRect.left - state.containerRect.left + container.scrollLeft;
+        state.drag.startPanelY = panelRect.top - state.containerRect.top + container.scrollTop;
 
         panel.classList.add('dragging');
 
         // Pointer capture keeps the release event paired with this drag even when the pointer
         // leaves the title bar or viewport. The blur/pagehide handlers remain a second safety net.
         if (typeof header.setPointerCapture === 'function') {
-            header.setPointerCapture(event.pointerId);
+            header.setPointerCapture(state.drag.pointerId!);
         }
     }
 
     /** Saves the newest pointer position and limits visual updates to one per animation frame. */
     function queueDrag(event: PointerEvent) {
-        if (!state.drag.isActive) return;
+        if (!state.drag.isActive && !state.drag.isPending) return;
         if (event.pointerId !== state.drag.pointerId) return;
+
+        if (state.drag.isPending) {
+            const distance = Math.hypot(event.clientX - state.drag.startX, event.clientY - state.drag.startY);
+            if (distance < DRAG_THRESHOLD_PX) return;
+            beginDrag();
+        }
 
         event.preventDefault();
 
@@ -490,7 +513,7 @@ export function initWindowManager() {
     }
 
     function stopDrag(event?: Event) {
-        if (!state.drag.isActive) return;
+        if (!state.drag.isActive && !state.drag.isPending) return;
 
         if (event) {
             if ('pointerId' in event && typeof event.pointerId === 'number') {
@@ -502,6 +525,7 @@ export function initWindowManager() {
             window.cancelAnimationFrame(state.drag.frame);
         }
 
+        const wasDragging = state.drag.isActive;
         const captureTarget = state.drag.captureTarget;
         const panel = state.drag.panel;
         const pointerId = state.drag.pointerId;
@@ -509,8 +533,11 @@ export function initWindowManager() {
         state.drag.captureTarget = null;
         state.drag.frame = 0;
         state.drag.isActive = false;
+        state.drag.isPending = false;
         state.drag.panel = null;
         state.drag.pointerId = null;
+
+        if (!wasDragging) return;
 
         if (panel) {
             panel.classList.remove('dragging');
@@ -522,14 +549,8 @@ export function initWindowManager() {
             }
         }
 
-        if (captureTarget) {
-            if (pointerId !== null) {
-                if (typeof captureTarget.hasPointerCapture === 'function') {
-                    if (captureTarget.hasPointerCapture(pointerId)) {
-                        captureTarget.releasePointerCapture(pointerId);
-                    }
-                }
-            }
+        if (captureTarget && pointerId !== null && captureTarget.hasPointerCapture?.(pointerId)) {
+            captureTarget.releasePointerCapture(pointerId);
         }
     }
 
@@ -555,18 +576,6 @@ export function initWindowManager() {
         panel.style.transform = `translate(${position.x}px, ${position.y}px)`;
     }
 
-    /** Re-clamps moved panels after active/inactive width transitions reach their final size. */
-    function bindPanelResizeTransitions() {
-        for (const panel of getInteractivePanels()) {
-            on(panel, 'transitionend', (event) => {
-                if (event.propertyName !== 'width') return;
-                if (!state.panelPositions.has(panel)) return;
-
-                refreshPanelMeasurements(panel);
-            });
-        }
-    }
-
     /** Removes drag-only styles without disturbing z-index, which preserves the user's focus order. */
     function clearPanelPositionStyles(panel: HTMLElement) {
         panel.style.removeProperty('height');
@@ -586,11 +595,14 @@ export function initWindowManager() {
         state.panelPositions.clear();
     }
 
-    /** Builds the popover used to show linked images and web pages. */
+    /**
+     * Builds the popover used to show linked images and web pages. It only exists while open, so
+     * it is always styled as the active window.
+     */
     function createPreviewPanel() {
         const panel = document.createElement('div');
 
-        panel.className = 'panel';
+        panel.className = 'panel active';
         panel.id = 'preview';
         panel.popover = 'auto';
         panel.innerHTML = `
@@ -604,7 +616,7 @@ export function initWindowManager() {
             </div>
         `;
 
-        queryRequired(selectors.panelsContainer).appendChild(panel);
+        state.container!.appendChild(panel);
 
         return panel;
     }
@@ -623,9 +635,7 @@ export function initWindowManager() {
     function renderPreview(panel: HTMLDivElement, url: string) {
         const container = queryRequired(selectors.previewContainer, panel);
         const heading = queryRequired(selectors.previewHeading, panel);
-        const hint = state.isMobile
-            ? 'tap outside to dismiss'
-            : 'press Esc to dismiss or click outside';
+        const hint = state.isMobile ? 'tap outside to dismiss' : 'press Esc to dismiss or click outside';
 
         container.replaceChildren();
 
@@ -740,125 +750,6 @@ export function initWindowManager() {
         }
     }
 
-    function bindTabs() {
-        for (const panel of getPanels()) {
-            const buttons = queryAll<HTMLButtonElement>(selectors.tabButton, panel);
-            if (buttons.length === 0) continue;
-
-            selectTab(panel, buttons[0].dataset.tab!);
-
-            for (const button of buttons) {
-                on(button, 'click', () => {
-                    selectTab(panel, button.dataset.tab!);
-                });
-            }
-
-            const tabGroup = queryRequired(selectors.tabGroup, panel);
-            on(tabGroup, 'keydown', (event) => {
-                switchTabWithKeyboard(event, panel);
-            });
-        }
-    }
-
-    /**
-     * Implements the standard left/right arrow behavior for an accessible tab list.
-     *
-     * @param panel Panel that owns the tab list.
-     */
-    function switchTabWithKeyboard(event: KeyboardEvent, panel: HTMLElement) {
-        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-        event.preventDefault();
-
-        const buttons = queryAll<HTMLButtonElement>(selectors.tabButton, panel);
-        if (buttons.length === 0) return;
-
-        const activeButton = panel.querySelector<HTMLButtonElement>(`${selectors.tabButton}.tab-active`)!;
-        const activeIndex = buttons.indexOf(activeButton);
-        if (activeIndex < 0) return;
-
-        const direction = event.key === 'ArrowLeft' ? -1 : 1;
-        const nextIndex = (activeIndex + direction + buttons.length) % buttons.length;
-
-        selectTab(panel, buttons[nextIndex].dataset.tab!, true);
-    }
-
-    /**
-     * Selects one tab and synchronizes its CSS classes with its accessibility attributes.
-     *
-     * @param panel Panel that owns the tabs.
-     * @param tabName Value from the tab button's data-tab attribute.
-     * @param moveFocus Whether keyboard focus should follow the selection. Defaults to `false`.
-     */
-    function selectTab(panel: HTMLElement, tabName: string, moveFocus = false) {
-        for (const button of queryAll<HTMLButtonElement>(selectors.tabButton, panel)) {
-            const isSelected = button.dataset.tab! === tabName;
-
-            button.classList.toggle('tab-active', isSelected);
-            button.setAttribute('aria-selected', String(isSelected));
-            button.setAttribute('tabindex', isSelected ? '0' : '-1');
-
-            if (isSelected && moveFocus) {
-                button.focus();
-            }
-        }
-
-        for (const tab of queryAll(selectors.tab, panel)) {
-            const isSelected = tab.id === `${panel.id}-${tabName}`;
-
-            tab.classList.toggle('tab-active', isSelected);
-            tab.hidden = !isSelected;
-        }
-
-        // Tab content can change panel dimensions, so drag bounds are refreshed after
-        // layout settles.
-        later(() => {
-            if (panel.id !== 'preview') {
-                refreshLayoutMeasurements();
-            }
-        }, RESIZE_DEBOUNCE_MS);
-    }
-
-    function bindSwipes() {
-        for (const panel of getPanels()) {
-            const tabGroup = panel.querySelector<HTMLElement>(selectors.tabGroup);
-            if (!tabGroup) continue;
-
-            let touchIsActive = false;
-            let touchStartX = 0;
-
-            on(panel, 'touchstart', (event) => {
-                if (!state.isMobile) return;
-
-                touchIsActive = true;
-                touchStartX = event.touches[0].clientX;
-            }, { passive: true });
-
-            on(panel, 'touchend', (event) => {
-                if (!touchIsActive) return;
-
-                touchIsActive = false;
-                if (!state.isMobile) return;
-
-                const touchEndX = event.changedTouches[0].clientX;
-                activateSwipedTab(tabGroup, touchEndX - touchStartX);
-            }, { passive: true });
-        }
-    }
-
-    function activateSwipedTab(tabGroup: HTMLElement, swipeDistance: number) {
-        if (Math.abs(swipeDistance) < SWIPE_THRESHOLD_PX) return;
-
-        const buttons = queryAll<HTMLButtonElement>(selectors.tabButton, tabGroup);
-        const activeButton = tabGroup.querySelector<HTMLButtonElement>(`${selectors.tabButton}.tab-active`)!;
-        const activeIndex = buttons.indexOf(activeButton);
-        if (activeIndex < 0) return;
-
-        const direction = swipeDistance > 0 ? -1 : 1;
-        const nextIndex = (activeIndex + direction + buttons.length) % buttons.length;
-
-        buttons[nextIndex].click();
-    }
-
     function bindDesktopPanelFocus() {
         for (const panel of getInteractivePanels()) {
             on(panel, 'pointerdown', (event) => {
@@ -870,9 +761,13 @@ export function initWindowManager() {
         }
     }
 
+    /**
+     * Shows abbreviation titles on tap, since touch screens have no hover. Tapping uses `click`
+     * rather than `touchstart` so a swipe that starts on an abbreviation still scrolls the page.
+     */
     function bindMobileTooltips() {
         for (const abbr of queryAll('abbr[title]')) {
-            let dismissOnOutsideTouch: ((event: TouchEvent) => void) | null = null;
+            let dismissOnOutsidePress: ((event: PointerEvent) => void) | null = null;
             let tooltip: HTMLDivElement | null = null;
             let dismissTimeout = 0;
 
@@ -882,9 +777,9 @@ export function initWindowManager() {
                     dismissTimeout = 0;
                 }
 
-                if (dismissOnOutsideTouch) {
-                    document.removeEventListener('touchstart', dismissOnOutsideTouch);
-                    dismissOnOutsideTouch = null;
+                if (dismissOnOutsidePress) {
+                    document.removeEventListener('pointerdown', dismissOnOutsidePress);
+                    dismissOnOutsidePress = null;
                 }
 
                 if (tooltip) {
@@ -893,28 +788,23 @@ export function initWindowManager() {
                 }
             };
 
-            on(abbr, 'touchstart', (event) => {
+            on(abbr, 'click', (event) => {
                 if (!state.isMobile) return;
 
-                event.preventDefault();
                 dismissTooltip();
 
                 tooltip = createTooltip(abbr.getAttribute('title')!);
-                positionTooltip(tooltip, abbr, event.touches[0].clientX);
+                positionTooltip(tooltip, abbr, event.clientX);
 
                 dismissTimeout = later(dismissTooltip, TOOLTIP_DISMISS_MS);
 
-                dismissOnOutsideTouch = (outsideEvent) => {
+                dismissOnOutsidePress = (outsideEvent) => {
                     if (outsideEvent.target instanceof Node && abbr.contains(outsideEvent.target)) return;
 
                     dismissTooltip();
                 };
 
-                on(document, 
-                    'touchstart',
-                    dismissOnOutsideTouch,
-                    { passive: true }
-                );
+                on(document, 'pointerdown', dismissOnOutsidePress, { passive: true });
             });
 
             state.tooltipDismissers.push(dismissTooltip);
@@ -959,41 +849,30 @@ export function initWindowManager() {
     /**
      * Positions a tooltip near its trigger while keeping it inside the viewport.
      *
+     * Placement is worked out in viewport coordinates, then converted to document coordinates
+     * once, because the tooltip is absolutely positioned on the body.
+     *
      * @param tooltip Tooltip to move.
      * @param target Abbreviation that opened the tooltip.
-     * @param touchX Horizontal coordinate of the user's touch.
+     * @param touchX Horizontal viewport coordinate of the user's tap.
      */
     function positionTooltip(tooltip: HTMLElement, target: HTMLElement, touchX: number) {
         const rect = target.getBoundingClientRect();
         const tooltipRect = tooltip.getBoundingClientRect();
         const viewportPadding = 8;
-        const viewportCenter = window.innerWidth / 2;
 
-        let left = rect.left + (rect.width - tooltipRect.width) / 2;
-        left = clamp(
-            left,
-            viewportPadding,
-            window.innerWidth - tooltipRect.width - viewportPadding
-        );
+        // Touch users often hide the trigger with their finger. Aligning to the tapped side keeps
+        // the tooltip readable without requiring a second interaction.
+        const preferredLeft = touchX < window.innerWidth / 2 ? rect.left : rect.right - tooltipRect.width;
+        const left = clamp(preferredLeft, viewportPadding, window.innerWidth - tooltipRect.width - viewportPadding);
 
-        // Touch users often hide the trigger with their finger. Biasing toward the touched side
-        // keeps the tooltip readable without requiring a second interaction.
-        if (touchX < viewportCenter) {
-            left = Math.max(viewportPadding, rect.left + window.scrollX);
-        } else {
-            left = Math.min(
-                window.innerWidth - tooltipRect.width - viewportPadding,
-                rect.right + window.scrollX - tooltipRect.width
-            );
+        let top = rect.top - tooltipRect.height - viewportPadding;
+        if (top < viewportPadding) {
+            top = rect.bottom + viewportPadding;
         }
 
-        let top = rect.top + window.scrollY - tooltipRect.height - 8;
-        if (top < window.scrollY + viewportPadding) {
-            top = rect.bottom + window.scrollY + 8;
-        }
-
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top = `${top}px`;
+        tooltip.style.left = `${left + window.scrollX}px`;
+        tooltip.style.top = `${top + window.scrollY}px`;
         tooltip.style.opacity = '1';
     }
 
@@ -1013,19 +892,19 @@ export function initWindowManager() {
     }
 
     function init() {
+        state.container = queryRequired(selectors.panelsContainer);
         refreshZIndexMax();
         bindLayoutMeasurements();
-        bindNavLinks();
+        bindPanelResizes();
         bindPreviewLinks();
         bindReferenceLinks();
-        bindTabs();
-        bindSwipes();
         bindMobileTooltips();
         bindDesktopPanelFocus();
         bindDragging();
-        bindPanelResizeTransitions();
         bindPageLifecycle();
         bindLocationRouting();
+
+        panels.focusHandler = (id) => focusPanel(document.getElementById(id));
 
         const welcomePanel = document.getElementById('welcome');
         if (!focusPanelFromHash() && welcomePanel) {
@@ -1038,6 +917,8 @@ export function initWindowManager() {
         controller.abort();
         suspendPage();
         removePreviewPanel();
+        panels.focusHandler = null;
+        panels.active = null;
         for (const id of timeouts) window.clearTimeout(id);
     };
 }

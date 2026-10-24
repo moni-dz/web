@@ -1,3 +1,5 @@
+import type { Heading } from '$lib/rehype-headings';
+
 export type AccentColor = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet';
 
 export interface PostMetadata {
@@ -6,13 +8,17 @@ export interface PostMetadata {
     summary: string;
     tags: string[];
     accent?: AccentColor;
+    headings?: Heading[];
 }
 
-export const posts = Object.entries(import.meta.glob<PostMetadata>('/src/posts/*.md', {
-    eager: true,
-    import: 'metadata',
-})).map(([path, metadata]) => ({
-    ...metadata,
-    slug: path.slice('/src/posts/'.length, -3),
-})).sort((a, b) => b.date.localeCompare(a.date));
-
+export const posts = Object.entries(
+    import.meta.glob<PostMetadata>('/src/posts/*.md', {
+        eager: true,
+        import: 'metadata',
+    }),
+)
+    .map(([path, metadata]) => ({
+        ...metadata,
+        slug: path.slice('/src/posts/'.length, -3),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));

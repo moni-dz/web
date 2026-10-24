@@ -1,96 +1,22 @@
-/* The global portfolio style is monospace; blog prose uses a reading face instead. */
-.blog-page-content * {
-    font-family: inherit;
-    letter-spacing: inherit;
+/*
+ * Blog styles that utilities cannot express: page-level rules keyed off the blog layout, and prose
+ * styles for HTML generated from Markdown, which has no classes to put utilities on.
+ */
+body:has(.blog-page-main) {
+    position: relative;
+    height: 100dvh;
+    overflow: hidden;
 }
 
-.blog-page-header-button,
-.blog-tag,
-.blog-toc,
-#blog-status,
-.markdown-body code,
-.markdown-body pre,
-.markdown-body pre * {
-    font-family: 'SF Mono', 'IBM Plex Mono', 'Courier', monospace;
-    letter-spacing: -0.031rem;
-}
+@media (width < 31.25rem) {
+    :root:has(.blog-page-main) {
+        --nav-height: 3.5rem;
+    }
 
-.blog-post,
-.blog-post-link {
-    --post-accent: light-dark(oklch(45% 0.1 var(--accent-hue)), oklch(78% 0.1 var(--accent-hue)));
-    --post-accent-subtle: light-dark(oklch(32% 0.04 var(--accent-hue)), oklch(65% 0.05 var(--accent-hue)));
-}
-
-.blog-error {
-    color: var(--emphasis-color);
-}
-
-.blog-reading-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(11rem, 14rem);
-    grid-template-areas: "content toc";
-    align-items: start;
-    gap: clamp(1.5rem, 4vw, 3rem);
-}
-
-.blog-toc {
-    grid-area: toc;
-    position: sticky;
-    top: 0;
-    display: block;
-    width: auto;
-    height: auto;
-    max-height: calc(100dvh - var(--nav-height) - 12rem);
-    border: 0.0625rem solid var(--border-color);
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    padding: 0.75rem;
-    overflow-y: auto;
-    z-index: auto;
-}
-
-.blog-toc h3 {
-    margin-bottom: 0.5rem;
-    font-size: 0.8rem;
-}
-
-.blog-toc-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.blog-toc-list li {
-    margin: 0;
-    list-style: none;
-}
-
-.blog-toc-list a {
-    display: block;
-    padding: 0.25rem 0.35rem;
-    font-size: 0.75rem;
-}
-
-.blog-toc-list a:hover {
-    background-color: var(--link-color);
-    color: var(--bg-color);
-}
-
-.blog-toc-level-2 {
-    padding-left: 0.5rem;
-}
-
-.blog-toc-level-3,
-.blog-toc-level-4,
-.blog-toc-level-5,
-.blog-toc-level-6 {
-    padding-left: 1rem;
-}
-
-.markdown-body {
-    grid-area: content;
-    min-width: 0;
-    max-width: 70ch;
+    body:has(.blog-page-main) {
+        height: auto;
+        overflow-y: auto;
+    }
 }
 
 .markdown-body > :first-child {
@@ -104,7 +30,6 @@
 }
 
 .markdown-body p {
-    display: block;
     margin: 1rem 0;
 }
 
@@ -125,6 +50,7 @@
 /* Match the smaller visual height of monospace glyphs to the surrounding prose. */
 .markdown-body :not(pre) > code {
     font-size: 0.875em;
+    letter-spacing: -0.031rem;
 }
 
 .markdown-body ul li {
@@ -144,10 +70,11 @@
 
 .markdown-body pre {
     display: block;
+    font-family: var(--font-family-mono);
+    letter-spacing: -0.031rem;
     max-width: 100%;
     margin: 1.25rem 0;
     border: 0.0625rem solid var(--border-color);
-    background-color: var(--overlay-color);
     padding: 1rem;
     overflow-x: auto;
     white-space: pre;
@@ -155,16 +82,6 @@
 
 .markdown-body pre code {
     color: inherit;
-}
-
-/* Shiki stores its second palette in variables; the shared theme toggle selects it. */
-[data-theme='dark'] .markdown-body .shiki,
-[data-theme='dark'] .markdown-body .shiki span {
-    background-color: var(--shiki-dark-bg) !important;
-    color: var(--shiki-dark) !important;
-    font-style: var(--shiki-dark-font-style) !important;
-    font-weight: var(--shiki-dark-font-weight) !important;
-    text-decoration: var(--shiki-dark-text-decoration) !important;
 }
 
 .markdown-body img {
@@ -178,18 +95,4 @@
     margin: 2rem 0;
     border: 0;
     border-top: 0.125rem solid var(--border-color);
-}
-
-@media (max-width: 48rem) {
-    .blog-reading-layout {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-areas:
-            "toc"
-            "content";
-    }
-
-    .blog-toc {
-        position: relative;
-        max-height: none;
-    }
 }
